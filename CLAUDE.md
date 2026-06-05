@@ -11,7 +11,8 @@ FitTrack/
 ├── .env.example                # Template des variables
 ├── .gitignore
 ├── CLAUDE.md                   # Ce fichier
-├── SESSION1_DONE.md            # Suivi des sessions
+├── SESSION1_DONE.md            # Compte rendu Session 1
+├── SESSION2_DONE.md            # Compte rendu Session 2
 │
 ├── backend/                    # API REST Node.js + Express
 │   ├── Dockerfile
@@ -36,9 +37,40 @@ FitTrack/
 │       ├── workout.routes.js
 │       └── stats.routes.js
 │
-├── frontend/                   # React + Vite (Session 2)
+├── frontend/                   # React + Vite — SPA complète (Session 2)
 │   ├── Dockerfile
-│   └── index.html              # Page placeholder en attendant Session 2
+│   ├── index.html
+│   ├── vite.config.ts          # Proxy /api → backend:5000, host 0.0.0.0, port 3000
+│   ├── tailwind.config.js
+│   ├── tsconfig.json
+│   ├── package.json            # Vite + React 18 + TS + Tailwind + Recharts + Axios
+│   └── src/
+│       ├── main.tsx
+│       ├── App.tsx             # React Router v6 + Toaster dark theme
+│       ├── index.css           # Tailwind + dark theme + scrollbar custom
+│       ├── types/
+│       │   └── index.ts        # User, Exercise, Workout, WorkoutExercise, ProgressionStats
+│       ├── services/
+│       │   └── api.ts          # Axios instance + intercepteur JWT Bearer + redirect 401
+│       ├── context/
+│       │   └── AuthContext.tsx # AuthProvider : login / register / logout
+│       ├── hooks/
+│       │   ├── useAuth.ts
+│       │   └── useFetch.ts     # Hook générique useFetch<T>
+│       ├── components/
+│       │   ├── LoadingSpinner.tsx
+│       │   ├── PrivateRoute.tsx
+│       │   └── Layout/
+│       │       ├── Sidebar.tsx # Dark sidebar, nav indigo, avatar initiales
+│       │       └── Layout.tsx
+│       └── pages/
+│           ├── Login.tsx
+│           ├── Register.tsx
+│           ├── Dashboard.tsx   # 4 stat cards + BarChart Recharts + dernières séances
+│           ├── Exercises.tsx   # Grille cards + filtres + search + modal CRUD
+│           ├── Workouts.tsx    # Liste chronologique + créer/éditer avec exercices
+│           ├── WorkoutDetail.tsx
+│           └── Profile.tsx     # Infos user + graphique activité mensuelle
 │
 ├── nginx/
 │   └── nginx.conf              # Proxy inverse : /api → backend:5000, / → frontend:3000
@@ -53,7 +85,7 @@ FitTrack/
 |---------------------|------------------|--------------|--------------|-----------------------------|
 | fittrack-mysql      | mysql:8.0        | 3306         | 3306         | Base de données principale  |
 | fittrack-backend    | node:20-alpine   | 5000         | 5000         | API REST                    |
-| fittrack-frontend   | node:20-alpine   | 3000         | 3000         | SPA React (Session 2)       |
+| fittrack-frontend   | node:20-alpine   | 3000         | 3000         | SPA React (Vite dev server) |
 | fittrack-nginx      | nginx:alpine     | 80           | 80           | Proxy inverse               |
 | fittrack-phpmyadmin | phpmyadmin       | 8081         | 80           | Interface admin MySQL       |
 
@@ -185,6 +217,6 @@ docker-compose ps
 
 ## Sessions de développement
 
-- **Session 1** (actuelle) : Docker + MySQL + Backend Node.js — COMPLÈTE
-- **Session 2** : Frontend React + Vite (composants, routing, Axios)
-- **Session 3** : Finalisation (déploiement, tests, optimisations)
+- **Session 1** — COMPLÈTE : Docker + MySQL + Backend Node.js (API REST complète)
+- **Session 2** — COMPLÈTE : Frontend React + Vite + TypeScript + Tailwind (SPA fullstack fonctionnelle)
+- **Session 3** (actuelle) : Finalisation — tests, optimisations Docker, déploiement
