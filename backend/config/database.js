@@ -6,6 +6,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'fittrack',
   user: process.env.DB_USER || 'fittrack_user',
   password: process.env.DB_PASSWORD || 'fittrack_pass',
+  charset: 'utf8mb4',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

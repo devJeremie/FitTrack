@@ -42,6 +42,12 @@
 
 ### Corrections appliquées
 - [x] Reset volume MySQL (`docker-compose down -v`) pour résoudre `ER_HOST_NOT_PRIVILEGED` (volume persisté avec anciens credentials)
+- [x] **Encodage UTF-8 MySQL** — ajout de `SET NAMES utf8mb4` + `SET CHARACTER SET utf8mb4` au début de `database/init.sql` pour corriger le double-encodage des accents dans les ENUM (`Flexibilité` → `FlexibilitÃ©`)
+- [x] **charset pool MySQL** — ajout de `charset: 'utf8mb4'` dans `backend/config/database.js`
+- [x] **Volume frontend Docker** — ajout du volume `./frontend:/app` dans `docker-compose.yml` (comme le backend) pour que les modifications de code soient prises en compte par Vite HMR sans rebuild
+- [x] **Gestion exercices dans le modal d'édition** (`Workouts.tsx`) — la section exercices est maintenant visible en mode création ET édition ; les exercices existants sont chargés via `GET /workouts/:id` à l'ouverture du modal
+- [x] **Gestion exercices sur la page de détail** (`WorkoutDetail.tsx`) — ajout inline complet : bouton « Ajouter », édition inline par exercice (crayon → champs pré-remplis + Enregistrer/Annuler), suppression par exercice (corbeille)
+- [x] **Nouvelles routes backend** — `POST /api/workouts/:id/exercises`, `PATCH /api/workouts/:id/exercises/:weId`, `DELETE /api/workouts/:id/exercises/:weId` + méthodes `addExercise`, `updateExercise`, `removeExercise`, `replaceExercises` dans `workout.model.js`
 
 ---
 

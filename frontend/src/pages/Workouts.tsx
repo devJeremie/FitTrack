@@ -1,27 +1,29 @@
 import { useEffect, useState, FormEvent, ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Calendar, Clock, Dumbbell, ChevronRight, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Calendar, Clock, Dumbbell, ChevronRight, Pencil, Trash2, X, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
-import { Workout, Exercise } from '../types'
+import { Workout, Exercise, WorkoutExercise } from '../types'
 
 const inputCls =
   'w-full px-4 py-2.5 bg-slate-900/60 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors'
 
 const labelCls = 'block text-xs font-medium text-slate-400 mb-1.5'
 
+type ExRow = {
+  exercise_id: number
+  sets: string
+  reps: string
+  weight_used: string
+  duration: string
+}
+
 type WorkoutForm = {
   title: string
   date: string
   duration: string
   notes: string
-  exercises: Array<{
-    exercise_id: number
-    sets: string
-    reps: string
-    weight_used: string
-    duration: string
-  }>
+  exercises: ExRow[]
 }
 
 const today = new Date().toISOString().slice(0, 10)
@@ -44,11 +46,18 @@ function formatDate(d: string) {
   })
 }
 
+const CAT_COLORS: Record<string, string> = {
+  Musculation: 'text-indigo-400',
+  Cardio: 'text-amber-400',
+  Flexibilité: 'text-emerald-400',
+}
+
 export default function Workouts() {
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [modalOpen, setModalOpen] = useState(false)
+  const [loadingEdit, setLoadingEdit] = useState(false)
   const [editTarget, setEditTarget] = useState<Workout | null>(null)
   const [form, setForm] = useState<WorkoutForm>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -63,7 +72,7 @@ export default function Workouts() {
     api
       .get('/exercises')
       .then((res: { data: { exercises: Exercise[] } }) => setExercises(res.data.exercises))
-      .catch(() => { /* silent */ })
+      .catch(() => {})
   }, [])
 
   const openCreate = () => {
@@ -72,7 +81,7 @@ export default function Workouts() {
     setModalOpen(true)
   }
 
-  const openEdit = (w: Workout) => {
+  const openEdit = async (w: Workout) => {
     setEditTarget(w)
     setForm({
       title: w.title,
@@ -82,6 +91,25 @@ export default function Workouts() {
       exercises: [],
     })
     setModalOpen(true)
+    setLoadingEdit(true)
+    try {
+      const res = await api.get(`/workouts/${w.id}`)
+      const exs: WorkoutExercise[] = res.data.workout.exercises ?? []
+      setForm((prev) => ({
+        ...prev,
+        exercises: exs.map((ex) => ({
+          exercise_id: ex.exercise_id,
+          sets: ex.sets != null ? String(ex.sets) : '',
+          reps: ex.reps != null ? String(ex.reps) : '',
+          weight_used: ex.weight_used != null ? String(ex.weight_used) : '',
+          duration: ex.duration != null ? String(ex.duration) : '',
+        })),
+      }))
+    } catch {
+      toast.error('Impossible de charger les exercices de la séance')
+    } finally {
+      setLoadingEdit(false)
+    }
   }
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -101,15 +129,12 @@ export default function Workouts() {
 
   const updateExRow = (idx: number, field: string, value: string) => {
     const updated = [...form.exercises]
-    updated[idx] = {
-      ...updated[idx],
-      [field]: field === 'exercise_id' ? Number(value) : value,
-    }
+    updated[idx] = { ...updated[idx], [field]: field === 'exercise_id' ? Number(value) : value }
     setForm({ ...form, exercises: updated })
   }
 
   const removeExRow = (idx: number) => {
-    setForm({ ...form, exercises: form.exercises.filter((_ex: WorkoutForm['exercises'][number], i: number) => i !== idx) })
+    setForm({ ...form, exercises: form.exercises.filter((_, i) => i !== idx) })
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -132,11 +157,16 @@ export default function Workouts() {
 
       if (editTarget) {
         const res = await api.put(`/workouts/${editTarget.id}`, payload)
-        setWorkouts(workouts.map((w) => (w.id === editTarget.id ? { ...w, ...res.data.workout } : w)))
+        const updated = res.data.workout
+        setWorkouts(workouts.map((w) =>
+          w.id === editTarget.id
+            ? { ...updated, exercise_count: payload.exercises.length }
+            : w
+        ))
         toast.success('Séance modifiée')
       } else {
         const res = await api.post('/workouts', payload)
-        setWorkouts([res.data.workout, ...workouts])
+        setWorkouts([{ ...res.data.workout, exercise_count: payload.exercises.length }, ...workouts])
         toast.success('Séance créée')
       }
       setModalOpen(false)
@@ -256,8 +286,10 @@ export default function Workouts() {
                 <X size={18} />
               </button>
             </div>
+
             <div className="px-6 py-5 overflow-y-auto max-h-[72vh]">
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Infos générales */}
                 <div>
                   <label className={labelCls}>Titre *</label>
                   <input
@@ -306,27 +338,48 @@ export default function Workouts() {
                   />
                 </div>
 
-                {/* Exercises (create only) */}
-                {!editTarget && (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className={labelCls}>Exercices</label>
-                      {exercises.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={addExRow}
-                          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
-                        >
-                          <Plus size={11} /> Ajouter
-                        </button>
+                {/* Exercices */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={labelCls}>
+                      Exercices
+                      {form.exercises.length > 0 && (
+                        <span className="ml-2 text-indigo-400">({form.exercises.length})</span>
                       )}
+                    </label>
+                    {exercises.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={addExRow}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                      >
+                        <Plus size={11} /> Ajouter un exercice
+                      </button>
+                    )}
+                  </div>
+
+                  {loadingEdit ? (
+                    <div className="flex items-center justify-center py-6 text-slate-500">
+                      <Loader2 size={18} className="animate-spin mr-2" />
+                      <span className="text-xs">Chargement des exercices...</span>
                     </div>
-                    <div className="space-y-3">
+                  ) : form.exercises.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addExRow}
+                      disabled={exercises.length === 0}
+                      className="w-full py-4 border border-dashed border-slate-700 rounded-lg text-xs text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      + Ajouter un exercice à cette séance
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
                       {form.exercises.map((row, idx) => {
                         const selEx = exercises.find((e) => e.id === row.exercise_id)
                         const isCardio = selEx?.category === 'Cardio'
                         return (
-                          <div key={idx} className="bg-slate-900/40 border border-slate-700 rounded-lg p-3 space-y-2">
+                          <div key={idx} className="bg-slate-900/40 border border-slate-700 rounded-xl p-3 space-y-2">
+                            {/* Sélecteur d'exercice */}
                             <div className="flex items-center gap-2">
                               <select
                                 value={row.exercise_id}
@@ -335,18 +388,27 @@ export default function Workouts() {
                               >
                                 {exercises.map((ex) => (
                                   <option key={ex.id} value={ex.id}>
-                                    {ex.name} ({ex.category})
+                                    {ex.name}
                                   </option>
                                 ))}
                               </select>
                               <button
                                 type="button"
                                 onClick={() => removeExRow(idx)}
-                                className="text-slate-600 hover:text-red-400 transition-colors"
+                                className="p-1.5 text-slate-600 hover:text-red-400 transition-colors"
                               >
-                                <X size={14} />
+                                <X size={13} />
                               </button>
                             </div>
+
+                            {/* Badge catégorie */}
+                            {selEx && (
+                              <p className={`text-xs font-medium ${CAT_COLORS[selEx.category] ?? 'text-slate-400'}`}>
+                                {selEx.category}{selEx.muscle_group ? ` · ${selEx.muscle_group}` : ''}
+                              </p>
+                            )}
+
+                            {/* Champs selon catégorie */}
                             {isCardio ? (
                               <div>
                                 <label className="text-xs text-slate-500">Durée (secondes)</label>
@@ -381,9 +443,18 @@ export default function Workouts() {
                           </div>
                         )
                       })}
+
+                      {/* Bouton "ajouter un autre" en bas de la liste */}
+                      <button
+                        type="button"
+                        onClick={addExRow}
+                        className="w-full py-2 border border-dashed border-slate-700 rounded-lg text-xs text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors"
+                      >
+                        + Ajouter un autre exercice
+                      </button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className="flex gap-3 pt-2">
                   <button
@@ -395,7 +466,7 @@ export default function Workouts() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || loadingEdit}
                     className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
                   >
                     {submitting ? 'Enregistrement...' : editTarget ? 'Enregistrer' : 'Créer'}

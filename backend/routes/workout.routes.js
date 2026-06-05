@@ -21,4 +21,13 @@ router.put('/:id', WorkoutController.update);
 // DELETE /api/workouts/:id
 router.delete('/:id', WorkoutController.delete);
 
+// POST /api/workouts/:id/exercises
+router.post('/:id/exercises', WorkoutController.addExercise);
+
+// PATCH /api/workouts/:id/exercises/:weId
+router.patch('/:id/exercises/:weId', WorkoutController.updateExercise);
+
+// DELETE /api/workouts/:id/exercises/:weId
+router.delete('/:id/exercises/:weId', WorkoutController.removeExercise);
+
 module.exports = router;

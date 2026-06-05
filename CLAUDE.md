@@ -37,7 +37,7 @@ FitTrack/
 │       ├── workout.routes.js
 │       └── stats.routes.js
 │
-├── frontend/                   # React + Vite — SPA complète (Session 2)
+├── frontend/                   # React + Vite — SPA complète, volume monté (dev)
 │   ├── Dockerfile
 │   ├── index.html
 │   ├── vite.config.ts          # Proxy /api → backend:5000, host 0.0.0.0, port 3000
@@ -68,8 +68,8 @@ FitTrack/
 │           ├── Register.tsx
 │           ├── Dashboard.tsx   # 4 stat cards + BarChart Recharts + dernières séances
 │           ├── Exercises.tsx   # Grille cards + filtres + search + modal CRUD
-│           ├── Workouts.tsx    # Liste chronologique + créer/éditer avec exercices
-│           ├── WorkoutDetail.tsx
+│           ├── Workouts.tsx    # Liste + créer/éditer avec gestion exercices complète
+│           ├── WorkoutDetail.tsx  # Détail + ajout/édition inline/suppression exercices
 │           └── Profile.tsx     # Infos user + graphique activité mensuelle
 │
 ├── nginx/
@@ -149,13 +149,16 @@ Réseau Docker : `fittrack-network` (bridge)
 | DELETE  | `/:id`    | JWT  | Supprimer un exercice                    |
 
 ### Séances — `/api/workouts`
-| Méthode | Route     | Auth | Description                              |
-|---------|-----------|------|------------------------------------------|
-| GET     | `/`       | JWT  | Séances de l'utilisateur connecté        |
-| GET     | `/:id`    | JWT  | Détail (avec exercices)                  |
-| POST    | `/`       | JWT  | Créer une séance (+ exercices optionnels)|
-| PUT     | `/:id`    | JWT  | Modifier une séance                      |
-| DELETE  | `/:id`    | JWT  | Supprimer une séance                     |
+| Méthode | Route                    | Auth | Description                              |
+|---------|--------------------------|------|------------------------------------------|
+| GET     | `/`                      | JWT  | Séances de l'utilisateur connecté        |
+| GET     | `/:id`                   | JWT  | Détail (avec exercices)                  |
+| POST    | `/`                      | JWT  | Créer une séance (+ exercices optionnels)|
+| PUT     | `/:id`                   | JWT  | Modifier séance + remplacer exercices    |
+| DELETE  | `/:id`                   | JWT  | Supprimer une séance                     |
+| POST    | `/:id/exercises`         | JWT  | Ajouter un exercice à une séance         |
+| PATCH   | `/:id/exercises/:weId`   | JWT  | Modifier les stats d'un exercice         |
+| DELETE  | `/:id/exercises/:weId`   | JWT  | Retirer un exercice d'une séance         |
 
 ### Statistiques — `/api/stats`
 | Méthode | Route          | Auth | Description                            |
@@ -184,6 +187,12 @@ JWT_SECRET=...         # Clé secrète longue et aléatoire
 JWT_EXPIRES_IN=7d
 FRONTEND_URL=http://localhost:3000
 ```
+
+## Points d'attention / correctifs appliqués
+
+- **Encodage MySQL** : `database/init.sql` commence par `SET NAMES utf8mb4` pour éviter le double-encodage des accents (ex. `Flexibilité` → `FlexibilitÃ©`). `backend/config/database.js` spécifie aussi `charset: 'utf8mb4'`.
+- **Volume frontend** : `docker-compose.yml` monte `./frontend:/app` pour que Vite HMR détecte les modifications de code sans rebuild.
+- **Reset DB** : si les containers MySQL ont été créés avec d'anciens credentials, faire `docker-compose down -v && docker-compose up -d` pour réinitialiser le volume.
 
 ## Commandes utiles
 

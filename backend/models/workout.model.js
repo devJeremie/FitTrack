@@ -50,6 +50,29 @@ const WorkoutModel = {
     return result.insertId;
   },
 
+  async updateExercise(weId, workoutId, { sets, reps, weight_used, duration }) {
+    await db.execute(
+      'UPDATE WorkoutExercise SET sets=?, reps=?, weight_used=?, duration=? WHERE id=? AND workout_id=?',
+      [sets || null, reps || null, weight_used || null, duration || null, weId, workoutId]
+    );
+  },
+
+  async removeExercise(weId, workoutId) {
+    const [result] = await db.execute(
+      'DELETE FROM WorkoutExercise WHERE id=? AND workout_id=?',
+      [weId, workoutId]
+    );
+    return result.affectedRows > 0;
+  },
+
+  async replaceExercises(workoutId, exercises) {
+    await db.execute('DELETE FROM WorkoutExercise WHERE workout_id = ?', [workoutId]);
+    for (const ex of exercises) {
+      if (!ex.exercise_id) continue;
+      await this.addExercise(workoutId, ex);
+    }
+  },
+
   async update(id, userId, { title, date, duration, notes }) {
     const fields = [];
     const values = [];
