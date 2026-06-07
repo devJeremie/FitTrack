@@ -13,6 +13,7 @@ FitTrack/
 ├── CLAUDE.md                   # Ce fichier
 ├── SESSION1_DONE.md            # Compte rendu Session 1
 ├── SESSION2_DONE.md            # Compte rendu Session 2
+├── SESSION3_DONE.md            # Compte rendu Session 3
 │
 ├── backend/                    # API REST Node.js + Express
 │   ├── Dockerfile
@@ -228,4 +229,4 @@ docker-compose ps
 
 - **Session 1** — COMPLÈTE : Docker + MySQL + Backend Node.js (API REST complète)
 - **Session 2** — COMPLÈTE : Frontend React + Vite + TypeScript + Tailwind (SPA fullstack fonctionnelle)
-- **Session 3** (actuelle) : Finalisation — tests, optimisations Docker, déploiement
+- **Session 3** — COMPLÈTE : Audit routes, vérification intégration, nettoyage, documentation
