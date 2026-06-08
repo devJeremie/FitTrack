@@ -225,8 +225,43 @@ docker-compose ps
 - **phpMyAdmin** : http://localhost:8081
 - **Via Nginx** : http://localhost (proxy vers frontend/backend)
 
+## Tests
+
+### Backend — Jest + Supertest (`backend/`)
+```bash
+# Dans le container
+docker exec -it fittrack-backend npm test
+docker exec -it fittrack-backend npm run test:coverage
+```
+- `jest.config.js` — config Jest (testEnvironment: node, setupFiles, coverage)
+- `tests/setup.js` — variables d'environnement de test (JWT_SECRET, NODE_ENV=test)
+- `tests/auth.test.js` — 14 tests : register, login, GET /me
+- `tests/exercises.test.js` — 13 tests : CRUD exercices + erreurs FK
+- `tests/workouts.test.js` — 10 tests : CRUD séances
+- `tests/middleware.test.js` — 5 tests : token absent/invalide/expiré/valide
+
+Stratégie : mock `config/database` (pas de connexion MySQL) + mock des models.
+`server.js` ne bind pas le port si `NODE_ENV=test`.
+
+### Frontend — Vitest + React Testing Library (`frontend/`)
+```bash
+# Dans le container
+docker exec -it fittrack-frontend npm test
+docker exec -it fittrack-frontend npm run test:coverage
+```
+- `vitest.config.ts` — config Vitest (environment: jsdom, setupFiles)
+- `src/tests/setup.ts` — import @testing-library/jest-dom
+- `src/tests/Login.test.tsx` — 6 tests : affichage, soumission, redirection, erreur, loading
+- `src/tests/Register.test.tsx` — 7 tests : champs, objectif, soumission, redirection
+- `src/tests/Sidebar.test.tsx` — 6 tests : nav, user info, initiales, logout
+- `src/tests/PrivateRoute.test.tsx` — 4 tests : spinner, redirect, accès autorisé
+- `src/tests/useAuth.test.tsx` — 5 tests : erreur hors provider, contexte, states
+- `src/tests/useFetch.test.tsx` — 6 tests : loading, data, error, refetch
+- `src/tests/Dashboard.test.tsx` — 6 tests : spinner, stats cards, séances récentes
+
 ## Sessions de développement
 
 - **Session 1** — COMPLÈTE : Docker + MySQL + Backend Node.js (API REST complète)
 - **Session 2** — COMPLÈTE : Frontend React + Vite + TypeScript + Tailwind (SPA fullstack fonctionnelle)
 - **Session 3** — COMPLÈTE : Audit routes, vérification intégration, nettoyage, documentation
+- **Session 3.5** — COMPLÈTE : Tests unitaires Jest (backend) + Vitest/RTL (frontend)
