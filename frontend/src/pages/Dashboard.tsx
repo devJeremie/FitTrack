@@ -1,12 +1,17 @@
+// ============================================================
+// pages/Dashboard.tsx — Tableau de bord
+//
+// Page principale après connexion. Elle affiche les statistiques
+// de l'utilisateur via le hook useFetch (appel GET /api/stats/progression).
+// Illustre : chargement asynchrone, rendu conditionnel, graphiques Recharts,
+// et composant interne (StatCard).
+// ============================================================
+
 import { Link } from 'react-router-dom'
+// Recharts : librairie de graphiques React (composants déclaratifs)
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import { Activity, Clock, Dumbbell, TrendingUp, ChevronRight } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -14,32 +19,36 @@ import { useFetch } from '../hooks/useFetch'
 import { ProgressionStats } from '../types'
 import LoadingSpinner from '../components/LoadingSpinner'
 
+// Mapping valeur BDD → label lisible
 const GOAL_LABELS: Record<string, string> = {
   lose: 'Perte de poids',
   maintain: 'Maintien du poids',
   gain: 'Prise de masse',
 }
 
+// Mapping numéro de mois → abréviation française
 const MONTH_LABELS: Record<string, string> = {
   '01': 'Jan', '02': 'Fév', '03': 'Mar', '04': 'Avr',
   '05': 'Mai', '06': 'Juin', '07': 'Juil', '08': 'Août',
   '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Déc',
 }
 
+// Convertit "2024-01" → "Jan 24"
 function formatMonth(m: string) {
   const [year, month] = m.split('-')
   return `${MONTH_LABELS[month] ?? month} ${year.slice(2)}`
 }
 
+// Convertit "2024-01-15" en date locale FR sans décalage horaire
+// (new Date('2024-01-15') interprète en UTC → problème de fuseau horaire)
 function formatDate(d: string) {
   const [y, mo, day] = d.slice(0, 10).split('-').map(Number)
   return new Date(y, mo - 1, day).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
+// Style du tooltip (info-bulle) du graphique Recharts
 const tooltipStyle = {
   backgroundColor: '#1E293B',
   border: '1px solid #334155',
@@ -49,11 +58,19 @@ const tooltipStyle = {
 
 export default function Dashboard() {
   const { user } = useAuth()
+
+  // useFetch<ProgressionStats> : appel GET /api/stats/progression
+  // Le générique <ProgressionStats> type la réponse pour TypeScript
   const { data, loading } = useFetch<ProgressionStats>('/stats/progression')
 
+  // Rendu conditionnel : on attend la fin du chargement avant d'afficher
   if (loading) return <LoadingSpinner />
 
-  const stats = data?.stats
+  const stats = data?.stats // ?. = opérateur optionnel (null-safe)
+
+  // Préparation des données pour Recharts :
+  // [...stats.monthly].reverse() remet les mois dans l'ordre chronologique
+  // (l'API les retourne du plus récent au plus ancien)
   const chartData = stats
     ? [...stats.monthly].reverse().map((m) => ({
         name: formatMonth(m.month),
@@ -62,11 +79,12 @@ export default function Dashboard() {
       }))
     : []
 
+  // Total pour calculer le pourcentage de chaque catégorie dans les barres
   const totalCategory = stats?.byCategory.reduce((acc, c) => acc + c.exercise_count, 0) || 1
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header de bienvenue */}
       <div>
         <h1 className="text-2xl font-bold text-slate-100">
           Bonjour, {user?.username} 👋
@@ -77,12 +95,13 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Stats cards */}
+      {/* 4 cartes de statistiques — composant StatCard défini plus bas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={<Activity size={18} className="text-indigo-400" />}
           label="Séances totales"
           value={stats?.summary.total_workouts ?? 0}
+          // ?? 0 : opérateur nullish coalescing, retourne 0 si null/undefined
           iconBg="bg-indigo-500/10"
         />
         <StatCard
@@ -105,28 +124,20 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Chart + Categories */}
+      {/* Graphique mensuel + répartition par catégorie */}
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* Monthly bar chart */}
+        {/* BarChart Recharts — rendu conditionnel si données disponibles */}
         <div className="lg:col-span-2 bg-[#1E293B] border border-slate-700/50 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-slate-200 mb-4">Séances par mois</h2>
           {chartData.length > 0 ? (
+            // ResponsiveContainer adapte le graphique à la largeur du conteneur
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData} barSize={28}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 11, fill: '#94A3B8' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fontSize: 11, fill: '#94A3B8' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.08)' }} />
+                {/* dataKey="Séances" doit correspondre à la clé dans chartData */}
                 <Bar dataKey="Séances" fill="#6366F1" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -137,12 +148,13 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* By category */}
+        {/* Barres de progression par catégorie */}
         <div className="bg-[#1E293B] border border-slate-700/50 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-slate-200 mb-4">Par catégorie</h2>
           {stats?.byCategory.length ? (
             <div className="space-y-4">
               {stats.byCategory.map((cat) => {
+                // Calcul du pourcentage pour la largeur de la barre
                 const pct = Math.min(100, (cat.exercise_count / totalCategory) * 100)
                 const colors: Record<string, string> = {
                   Musculation: '#6366F1',
@@ -156,6 +168,7 @@ export default function Dashboard() {
                       <span className="text-slate-400">{cat.category}</span>
                       <span className="text-slate-300 font-medium">{cat.exercise_count}</span>
                     </div>
+                    {/* Barre de progression avec largeur dynamique via style inline */}
                     <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all"
@@ -172,7 +185,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent workouts */}
+      {/* Liste des 5 dernières séances */}
       <div className="bg-[#1E293B] border border-slate-700/50 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-slate-200">Dernières séances</h2>
@@ -183,11 +196,8 @@ export default function Dashboard() {
         {stats?.recent.length ? (
           <div className="divide-y divide-slate-700/50">
             {stats.recent.map((w) => (
-              <Link
-                key={w.id}
-                to={`/workouts/${w.id}`}
-                className="flex items-center justify-between py-3 group"
-              >
+              // Chaque séance est un lien cliquable vers son détail
+              <Link key={w.id} to={`/workouts/${w.id}`} className="flex items-center justify-between py-3 group">
                 <div>
                   <p className="text-sm font-medium text-slate-200 group-hover:text-indigo-300 transition-colors">
                     {w.title}
@@ -216,11 +226,13 @@ export default function Dashboard() {
   )
 }
 
+// ============================================================
+// StatCard — Composant interne réutilisable
+// Défini dans le même fichier car utilisé uniquement ici.
+// React.ReactNode : n'importe quel contenu React (JSX, string, number...)
+// ============================================================
 function StatCard({
-  icon,
-  label,
-  value,
-  iconBg,
+  icon, label, value, iconBg,
 }: {
   icon: React.ReactNode
   label: string

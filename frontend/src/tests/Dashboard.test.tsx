@@ -1,3 +1,13 @@
+// ============================================================
+// tests/Dashboard.test.tsx — Tests du composant Dashboard
+//
+// Dashboard est asynchrone : il appelle useFetch (→ api.get)
+// puis affiche les données reçues. On mocke api.get ET Recharts
+// (les graphiques SVG complexes cassent dans jsdom, l'environnement de test).
+//
+// Pattern : mockResolvedValue → render → waitFor (attend le chargement)
+// ============================================================
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -6,12 +16,15 @@ import { AuthContext, AuthContextType } from '../context/AuthContext'
 import { ProgressionStats, User } from '../types'
 import api from '../services/api'
 
+// ---- Mock de l'instance Axios ----
 vi.mock('../services/api', () => ({
-  default: {
-    get: vi.fn(),
-  },
+  default: { get: vi.fn() },
 }))
 
+// ---- Mock de Recharts ----
+// Les composants SVG Recharts (ResponsiveContainer, BarChart...) ne fonctionnent
+// pas dans jsdom (pas de vrai moteur de rendu). On les remplace par de simples div.
+// Cela permet de tester le contenu texte du Dashboard sans les graphiques.
 vi.mock('recharts', () => ({
   BarChart: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="bar-chart">{children}</div>
@@ -37,14 +50,15 @@ const mockUser: User = {
   created_at: '2024-01-01T00:00:00.000Z',
 }
 
+// Données de stats complètes pour simuler une réponse de l'API
 const mockStats: ProgressionStats = {
   user: { username: 'testuser', weight: 75, goal: 'maintain', member_since: '2024-01-01' },
   stats: {
     summary: {
       total_workouts: 12,
       total_minutes: 720,
-      avg_duration: 45,      // unique : pas présent ailleurs dans le DOM
-      unique_exercises: 9,   // unique : différent du exercise_count des catégories
+      avg_duration: 45,       // Valeur unique : facilite les assertions
+      unique_exercises: 9,    // Différent de exercise_count des catégories
     },
     monthly: [
       { month: '2024-01', workout_count: 4, total_minutes: 240 },
@@ -54,7 +68,7 @@ const mockStats: ProgressionStats = {
       { category: 'Musculation', exercise_count: 8, total_reps: 320 },
     ],
     recent: [
-      { id: 1, title: 'Séance du lundi', date: '2024-01-15', duration: 90 }, // durée différente de avg_duration
+      { id: 1, title: 'Séance du lundi', date: '2024-01-15', duration: 90 },
     ],
   },
 }
@@ -71,6 +85,7 @@ const makeAuthContext = (overrides: Partial<AuthContextType> = {}): AuthContextT
 const renderDashboard = (ctx = makeAuthContext()) =>
   render(
     <AuthContext.Provider value={ctx}>
+      {/* MemoryRouter nécessaire car Dashboard contient des <Link> */}
       <MemoryRouter>
         <Dashboard />
       </MemoryRouter>
@@ -83,9 +98,11 @@ describe('Dashboard', () => {
   })
 
   it('affiche le spinner pendant le chargement', () => {
+    // Promesse infinie → Dashboard reste bloqué sur "loading: true"
     mockGet.mockReturnValue(new Promise(() => {}))
     renderDashboard()
 
+    // Le spinner utilise la classe animate-spin (pas de data-testid)
     const spinner = document.querySelector('.animate-spin')
     expect(spinner).toBeInTheDocument()
   })
@@ -94,7 +111,9 @@ describe('Dashboard', () => {
     mockGet.mockResolvedValue({ data: mockStats })
     renderDashboard()
 
+    // waitFor : attend que le chargement se termine et que le DOM soit mis à jour
     await waitFor(() => {
+      // /bonjour, testuser/i : regex insensible à la casse pour trouver le texte
       expect(screen.getByText(/bonjour, testuser/i)).toBeInTheDocument()
     })
   })
@@ -103,6 +122,7 @@ describe('Dashboard', () => {
     mockGet.mockResolvedValue({ data: mockStats })
     renderDashboard()
 
+    // On attend que le premier élément soit visible avant de vérifier les valeurs
     await waitFor(() => {
       expect(screen.getByText('Séances totales')).toBeInTheDocument()
       expect(screen.getByText("Minutes d'entraînement")).toBeInTheDocument()
@@ -110,10 +130,11 @@ describe('Dashboard', () => {
       expect(screen.getByText('Exercices différents')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('12')).toBeInTheDocument()
-    expect(screen.getByText('720')).toBeInTheDocument()
-    expect(screen.getByText('45 min')).toBeInTheDocument()
-    expect(screen.getByText('9')).toBeInTheDocument()
+    // Vérification des valeurs numériques des cards
+    expect(screen.getByText('12')).toBeInTheDocument()  // total_workouts
+    expect(screen.getByText('720')).toBeInTheDocument() // total_minutes
+    expect(screen.getByText('45 min')).toBeInTheDocument() // avg_duration formatée
+    expect(screen.getByText('9')).toBeInTheDocument()   // unique_exercises
   })
 
   it('affiche les dernières séances', async () => {
@@ -121,11 +142,13 @@ describe('Dashboard', () => {
     renderDashboard()
 
     await waitFor(() => {
+      // Le titre de la séance récente doit apparaître
       expect(screen.getByText('Séance du lundi')).toBeInTheDocument()
     })
   })
 
   it("affiche 0 pour les stats quand il n'y a pas de données", async () => {
+    // Stats vides pour simuler un nouvel utilisateur sans activité
     const emptyStats: ProgressionStats = {
       ...mockStats,
       stats: {
@@ -139,6 +162,7 @@ describe('Dashboard', () => {
     renderDashboard()
 
     await waitFor(() => {
+      // Quand recent est vide, le message d'état vide s'affiche
       expect(screen.getByText('Aucune séance.')).toBeInTheDocument()
     })
   })
@@ -148,6 +172,7 @@ describe('Dashboard', () => {
     renderDashboard()
 
     await waitFor(() => {
+      // goal: 'maintain' → GOAL_LABELS['maintain'] = 'Maintien du poids'
       expect(screen.getByText(/Maintien du poids/)).toBeInTheDocument()
     })
   })

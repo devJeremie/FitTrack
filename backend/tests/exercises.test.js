@@ -1,6 +1,16 @@
+// ============================================================
+// tests/exercises.test.js — Tests d'intégration des routes d'exercices
+//
+// Stratégie identique à auth.test.js :
+//   - Mock de la BDD et du modèle (pas de connexion MySQL réelle)
+//   - Supertest pour simuler les requêtes HTTP
+//   - Chaque test configure ses propres retours de mock
+// ============================================================
+
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 
+// Mocks déclarés en premier (avant les imports qui en dépendent)
 jest.mock('../config/database', () => ({
   execute: jest.fn(),
   getConnection: jest.fn().mockResolvedValue({ release: jest.fn() }),
@@ -18,6 +28,10 @@ jest.mock('../models/exercise.model', () => ({
 const app = require('../server');
 const ExerciseModel = require('../models/exercise.model');
 
+// ---- Générateur de header JWT ----
+// Toutes les routes exercices nécessitent un token valide (authMiddleware).
+// authHeader() génère un objet { Authorization: 'Bearer <token>' }
+// qu'on passe à .set() dans chaque test.
 const authHeader = () => ({
   Authorization: `Bearer ${jwt.sign(
     { id: 1, email: 'test@example.com', username: 'testuser' },
@@ -26,6 +40,7 @@ const authHeader = () => ({
   )}`,
 });
 
+// Exercice de référence réutilisé dans les tests
 const BASE_EXERCISE = {
   id: 1,
   name: 'Squat',
@@ -37,24 +52,30 @@ const BASE_EXERCISE = {
 
 describe('Exercise Routes', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.clearAllMocks(); // Remet tous les mocks à zéro entre chaque test
   });
 
+  // ==================================================
   describe('GET /api/exercises', () => {
+  // ==================================================
+
     it('retourne la liste des exercices (200)', async () => {
+      // mockResolvedValue([BASE_EXERCISE]) : findAll retourne un tableau avec 1 exercice
       ExerciseModel.findAll.mockResolvedValue([BASE_EXERCISE]);
 
       const res = await request(app)
         .get('/api/exercises')
-        .set(authHeader());
+        .set(authHeader()); // .set() accepte un objet → spread sur les headers
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('exercises');
+      // count = exercises.length, calculé dans le contrôleur
       expect(res.body).toHaveProperty('count', 1);
       expect(res.body.exercises[0].name).toBe('Squat');
     });
 
     it('retourne 401 sans token', async () => {
+      // Sans header → authMiddleware bloque avant d'appeler findAll
       const res = await request(app).get('/api/exercises');
 
       expect(res.status).toBe(401);
@@ -66,15 +87,19 @@ describe('Exercise Routes', () => {
         .set(authHeader());
 
       expect(res.status).toBe(400);
+      // toContain vérifie que la chaîne contient ce texte (peu importe le reste)
       expect(res.body.error).toContain('Category must be one of');
     });
 
     it('accepte les catégories valides', async () => {
+      // findAll retourne un tableau vide (on teste juste que ça ne génère pas d'erreur)
       ExerciseModel.findAll.mockResolvedValue([]);
 
+      // Test en boucle sur les 3 catégories valides
       for (const cat of ['Musculation', 'Cardio', 'Flexibilité']) {
         const res = await request(app)
           .get(`/api/exercises?category=${encodeURIComponent(cat)}`)
+          // encodeURIComponent gère les caractères spéciaux (accent dans "Flexibilité")
           .set(authHeader());
 
         expect(res.status).toBe(200);
@@ -82,8 +107,12 @@ describe('Exercise Routes', () => {
     });
   });
 
+  // ==================================================
   describe('POST /api/exercises', () => {
+  // ==================================================
+
     it('crée un exercice avec succès (201)', async () => {
+      // mockResolvedValue(BASE_EXERCISE) : create retourne l'exercice créé complet
       ExerciseModel.create.mockResolvedValue(BASE_EXERCISE);
 
       const res = await request(app)
@@ -97,10 +126,11 @@ describe('Exercise Routes', () => {
     });
 
     it('retourne 400 si name manquant', async () => {
+      // Pas de mock nécessaire : la validation échoue avant d'appeler le modèle
       const res = await request(app)
         .post('/api/exercises')
         .set(authHeader())
-        .send({ category: 'Musculation' });
+        .send({ category: 'Musculation' }); // name absent
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('Name and category are required.');
@@ -110,7 +140,7 @@ describe('Exercise Routes', () => {
       const res = await request(app)
         .post('/api/exercises')
         .set(authHeader())
-        .send({ name: 'Squat' });
+        .send({ name: 'Squat' }); // category absente
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('Name and category are required.');
@@ -127,14 +157,19 @@ describe('Exercise Routes', () => {
     });
   });
 
+  // ==================================================
   describe('PUT /api/exercises/:id', () => {
+  // ==================================================
+
     it('modifie un exercice avec succès (200)', async () => {
       const updated = { ...BASE_EXERCISE, name: 'Squat modifié' };
+      // findById : vérifie que l'exercice existe (sinon 404)
       ExerciseModel.findById.mockResolvedValue(BASE_EXERCISE);
+      // update retourne l'exercice modifié
       ExerciseModel.update.mockResolvedValue(updated);
 
       const res = await request(app)
-        .put('/api/exercises/1')
+        .put('/api/exercises/1') // :id = 1 dans l'URL
         .set(authHeader())
         .send({ name: 'Squat modifié', category: 'Musculation' });
 
@@ -144,6 +179,7 @@ describe('Exercise Routes', () => {
     });
 
     it("retourne 404 si l'exercice n'existe pas", async () => {
+      // null → exercice introuvable
       ExerciseModel.findById.mockResolvedValue(null);
 
       const res = await request(app)
@@ -165,9 +201,13 @@ describe('Exercise Routes', () => {
     });
   });
 
+  // ==================================================
   describe('DELETE /api/exercises/:id', () => {
+  // ==================================================
+
     it('supprime un exercice avec succès (200)', async () => {
       ExerciseModel.findById.mockResolvedValue(BASE_EXERCISE);
+      // delete retourne true : affectedRows > 0
       ExerciseModel.delete.mockResolvedValue(true);
 
       const res = await request(app)
@@ -191,6 +231,10 @@ describe('Exercise Routes', () => {
 
     it("retourne 409 si l'exercice est utilisé dans une séance", async () => {
       ExerciseModel.findById.mockResolvedValue(BASE_EXERCISE);
+
+      // mockRejectedValue() simule une erreur levée par le modèle.
+      // On crée une erreur avec un code MySQL spécifique (FK constraint)
+      // pour simuler la contrainte RESTRICT définie en BDD.
       const fkError = new Error('FK constraint');
       fkError.code = 'ER_ROW_IS_REFERENCED_2';
       ExerciseModel.delete.mockRejectedValue(fkError);
@@ -199,7 +243,7 @@ describe('Exercise Routes', () => {
         .delete('/api/exercises/1')
         .set(authHeader());
 
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(409); // 409 = Conflict (ressource en cours d'utilisation)
       expect(res.body.error).toBe('Cannot delete: exercise is used in one or more workouts.');
     });
   });

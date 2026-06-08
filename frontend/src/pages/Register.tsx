@@ -1,9 +1,21 @@
+// ============================================================
+// pages/Register.tsx — Page d'inscription
+//
+// Similaire à Login.tsx mais avec un formulaire multi-champs.
+// Utilise un état objet unique (form) plutôt qu'un useState par champ,
+// ce qui simplifie la gestion quand le nombre de champs est élevé.
+// ============================================================
+
+// ChangeEvent : type de l'événement onChange d'un input/select
 import { useState, FormEvent, ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Dumbbell } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 
+// ---- Classes CSS réutilisables ----
+// On extrait les classes Tailwind répétées dans des constantes
+// pour éviter la duplication et faciliter la maintenance.
 const inputCls =
   'w-full px-4 py-2.5 bg-slate-900/60 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors'
 
@@ -13,14 +25,21 @@ export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+
+  // ---- État unique pour tout le formulaire ----
+  // Un seul useState avec un objet plutôt que 5 useState séparés.
+  // handleChange met à jour n'importe quel champ via le name de l'input.
   const [form, setForm] = useState({
     username: '',
     email: '',
     password: '',
     weight: '',
-    goal: 'maintain',
+    goal: 'maintain', // Valeur par défaut correspondant à l'ENUM en BDD
   })
 
+  // handleChange générique : e.target.name identifie le champ modifié
+  // Le spread { ...form } crée une copie, puis [e.target.name] met à jour le champ
+  // Cette technique évite d'écrire un handler par champ (setUsername, setEmail, etc.)
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -33,6 +52,8 @@ export default function Register() {
         username: form.username,
         email: form.email,
         password: form.password,
+        // weight est une chaîne dans le formulaire HTML → on la convertit en nombre
+        // Si vide, on envoie undefined (le backend accepte weight optionnel)
         weight: form.weight ? Number(form.weight) : undefined,
         goal: form.goal,
       })
@@ -63,6 +84,7 @@ export default function Register() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className={labelCls}>Nom d'utilisateur</label>
+              {/* name="username" est utilisé par handleChange pour identifier le champ */}
               <input
                 name="username"
                 required
@@ -88,6 +110,7 @@ export default function Register() {
 
             <div>
               <label className={labelCls}>Mot de passe</label>
+              {/* minLength={6} : validation HTML native (doublée côté backend) */}
               <input
                 name="password"
                 type="password"
@@ -100,9 +123,11 @@ export default function Register() {
               />
             </div>
 
+            {/* Grille 2 colonnes : poids et objectif côte à côte */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Poids (kg)</label>
+                {/* step="0.1" : permet des valeurs décimales (ex: 75.5 kg) */}
                 <input
                   name="weight"
                   type="number"
@@ -117,6 +142,7 @@ export default function Register() {
               </div>
               <div>
                 <label className={labelCls}>Objectif</label>
+                {/* select contrôlé : même pattern que les inputs */}
                 <select
                   name="goal"
                   value={form.goal}
