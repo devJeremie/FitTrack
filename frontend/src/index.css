@@ -1,6 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*EN V4 on note seulement 
+@import "tailwindcss";*/
+
+@tailwind base;       /*en v4 c'est deprecie*/
+@tailwind components; /*en v4 c'est deprecie*/
+@tailwind utilities;  /*en v4 c'est deprecie*/
 
 @layer base {
   body {
