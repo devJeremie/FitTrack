@@ -88,7 +88,7 @@ const AuthController = {
       const user = await UserModel.findByEmail(email);
       if (!user) {
         // Même message que pour un mauvais mot de passe : évite l'énumération
-        // des comptes (un attaquant ne peut pas savoir si l'email existe ou non)
+        // des comptes (un attaquant(hacker) ne peut pas savoir si l'email existe ou non)
         return res.status(401).json({ error: 'Invalid credentials.' });
       }
 
