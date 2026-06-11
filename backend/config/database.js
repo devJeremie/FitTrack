@@ -25,13 +25,10 @@ const pool = mysql.createPool({
   // waitForConnections : si le pool est plein, mettre la requête en file d'attente
   // (plutôt que de retourner une erreur immédiatement)
   waitForConnections: true,
-
   // Nombre maximum de connexions simultanées dans le pool
   connectionLimit: 10,
-
   // 0 = file d'attente illimitée (0 signifie pas de limite)
   queueLimit: 0,
-
   // Stocke les dates en UTC dans MySQL pour éviter les décalages horaires
   timezone: '+00:00',
 });
