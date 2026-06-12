@@ -83,6 +83,7 @@ const ExerciseController = {
   // Met à jour un exercice existant. Tous les champs sont optionnels (mise à jour partielle).
   async update(req, res) {
     try {
+      //On recupere les données envoyées dans le corp de la requète
       const { name, category, muscle_group, description } = req.body;
 
       // On valide la catégorie seulement si elle est fournie
@@ -90,10 +91,12 @@ const ExerciseController = {
         return res.status(400).json({ error: `Category must be one of: ${VALID_CATEGORIES.join(', ')}` });
       }
 
-      // On vérifie l'existence AVANT de mettre à jour pour retourner un 404 clair
+      // On vérifie l'existence en bdd AVANT de mettre à jour pour retourner un 404 clair
       const exercise = await ExerciseModel.findById(req.params.id);
+      //Si il n'est pas trouvé, on arrête la requète
       if (!exercise) return res.status(404).json({ error: 'Exercise not found.' });
 
+      //Si il existe on met a jours ses données
       const updated = await ExerciseModel.update(req.params.id, { name, category, muscle_group, description });
       res.json({ message: 'Exercise updated.', exercise: updated });
     } catch (err) {
