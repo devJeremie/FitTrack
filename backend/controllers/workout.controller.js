@@ -17,9 +17,12 @@ const WorkoutController = {
       // req.user.id est l'id de l'utilisateur authentifié (depuis le JWT)
       // Chaque utilisateur ne voit que SES séances — isolation garantie côté SQL
       const workouts = await WorkoutModel.findAllByUser(req.user.id);
+      //On renvoie la liste des séances et leur npombre total en JSON
       res.json({ workouts, count: workouts.length });
     } catch (err) {
+      //Si erreur, on l'affiche dans les logs serveur pour debug
       console.error('GetAll workouts error:', err);
+      //Et on renvoie une erreur 500 au client
       res.status(500).json({ error: 'Failed to fetch workouts.' });
     }
   },
