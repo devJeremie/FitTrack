@@ -148,12 +148,16 @@ const WorkoutController = {
   // Retire un exercice d'une séance (sans supprimer l'exercice lui-même)
   async removeExercise(req, res) {
     try {
+      //On recupere la séance (workout) en bdd avec identification du user concerne
       const workout = await WorkoutModel.findById(req.params.id, req.user.id);
+      //Si la séance n'existe pas ou appartient a un autre user -> erreur 404
       if (!workout) return res.status(404).json({ error: 'Workout not found.' });
-
+      //On supprime l'exercice de la séance grace a son ID(id exercice et id seance)
       const deleted = await WorkoutModel.removeExercise(req.params.weId, req.params.id);
+      //Si l'exercice n'a pas été trouve dans cette seance là -> erreur 404
       if (!deleted) return res.status(404).json({ error: 'Exercise not found in this workout.' });
 
+      //On recupere la seance a nouveau, mais sans l'exercice qui a ete supprimé
       const updated = await WorkoutModel.findById(req.params.id, req.user.id);
       res.json({ message: 'Exercise removed.', workout: updated });
     } catch (err) {
