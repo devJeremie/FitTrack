@@ -16,6 +16,8 @@ const StatsController = {
   // historique mensuel, répartition par catégorie, et séances récentes.
   async getProgression(req, res) {
     try {
+      //Une Promise ou promesse, en Javascript c'est un objet qui représente 
+      // le resultat futur d'une opération asynchrone
       // Promise.all([...]) exécute plusieurs requêtes asynchrones EN PARALLÈLE.
       // Au lieu d'attendre la fin de la première pour lancer la seconde
       // (ce qui prendrait 2× plus de temps), les deux s'exécutent simultanément.
