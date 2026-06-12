@@ -42,10 +42,13 @@ const ExerciseController = {
   // req.params.id contient le segment dynamique de l'URL (ex: /exercises/42 → id = "42")
   async getOne(req, res) {
     try {
+      // Recherche de l'exercice par son ID (passé en URL)
       const exercise = await ExerciseModel.findById(req.params.id);
-      if (!exercise) return res.status(404).json({ error: 'Exercise not found.' });
       // 404 = Not Found : la ressource demandée n'existe pas
+      if (!exercise) return res.status(404).json({ error: 'Exercise not found.' });
+      //Si exercice trouve on le renvoie au format JSON
       res.json({ exercise });
+      //En cas d'erreur (ex: bdd, ID invalide etc.. )
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch exercise.' });
     }
