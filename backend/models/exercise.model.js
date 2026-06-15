@@ -19,6 +19,7 @@ const ExerciseModel = {
     // Filtrage par catégorie (si fourni dans ?category=...)
     if (category) {
       query += ' AND category = ?';
+      //query + 'AND category = ?' = query
       values.push(category);
     }
 
