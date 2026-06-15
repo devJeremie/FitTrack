@@ -90,7 +90,7 @@ const UserModel = {
   },
 
   // ---- Vérifier le mot de passe lors du login ----
-  // bcrypt.compare() re-hash le mot de passe en clair avec le sel stocké dans
+  // bcrypt.compare() re-hash le mot de passe en clair avec le salt stocké dans
   // le hash, puis compare. Retourne true si ça correspond, false sinon.
   async verifyPassword(plainPassword, hashedPassword) {
     return bcrypt.compare(plainPassword, hashedPassword);
