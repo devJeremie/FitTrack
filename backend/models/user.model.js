@@ -19,7 +19,7 @@ const UserModel = {
   // ---- Créer un utilisateur ----
   async create({ username, email, password, weight, goal }) {
     // On hache le mot de passe AVANT de l'insérer en base.
-    // bcrypt.hash() génère un sel aléatoire et produit un hash de 60 caractères.
+    // bcrypt.hash() génère un salt aléatoire et produit un hash de 60 caractères.
     // Même si la BDD est compromise, les mots de passe restent illisibles.
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
