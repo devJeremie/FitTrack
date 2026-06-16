@@ -34,7 +34,7 @@ const WorkoutModel = {
     // On vérifie d'abord que la séance appartient à l'utilisateur (sécurité !)
     // Sans ce check, un utilisateur pourrait lire les séances d'un autre
     const [workouts] = await db.execute(
-      'SELECT * FROM Workout WHERE id = ? AND user_id = ?',
+      `SELECT * FROM Workout WHERE id = ? AND user_id = ?`,
       [id, userId]
     );
     if (!workouts[0]) return null;
