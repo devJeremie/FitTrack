@@ -62,7 +62,6 @@ export default function Dashboard() {
   // useFetch<ProgressionStats> : appel GET /api/stats/progression
   // Le générique <ProgressionStats> type la réponse pour TypeScript
   const { data, loading } = useFetch<ProgressionStats>('/stats/progression')
-
   // Rendu conditionnel : on attend la fin du chargement avant d'afficher
   if (loading) return <LoadingSpinner />
 
