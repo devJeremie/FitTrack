@@ -224,7 +224,6 @@ export default function Dashboard() {
     </div>
   )
 }
-
 // ============================================================
 // StatCard — Composant interne réutilisable
 // Défini dans le même fichier car utilisé uniquement ici.
