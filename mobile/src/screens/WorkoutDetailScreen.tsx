@@ -1,7 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react'
+// ============================================================
+// WorkoutDetailScreen.tsx — Détail d'une séance d'entraînement
+//
+// Fonctionnalités :
+//   - Affiche les informations de la séance (date, durée, notes)
+//   - Liste les exercices de la séance avec leurs statistiques
+//   - Ajout / modification / suppression d'exercices dans la séance
+//   - Formulaire adaptatif : Cardio → durée (secondes), autres → séries/reps/poids
+//   - Double modal : formulaire d'exercice + sélecteur d'exercice imbriqué
+//
+// Cet écran est accessible depuis WorkoutsScreen ET DashboardScreen.
+// Il reçoit le workoutId via les paramètres de navigation.
+// ============================================================
+
+import React, { useState, useEffect } from 'react'
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, ActivityIndicator, Alert, TextInput, RefreshControl,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+  RefreshControl,
 } from 'react-native'
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -11,14 +33,18 @@ import api from '../services/api'
 import { Colors } from '../constants/colors'
 import { Workout, Exercise, WorkoutExercise, RootStackParamList } from '../types'
 
+// RouteProp type : permet à TypeScript de connaître les paramètres de cet écran
+// (workoutId: number, title?: string)
 type RouteParams = RouteProp<RootStackParamList, 'WorkoutDetail'>
 
+// Couleur associée à chaque catégorie d'exercice
 const CAT_COLORS: Record<string, string> = {
   Musculation: Colors.primaryLight,
-  Cardio: Colors.amber,
+  Cardio:      Colors.amber,
   Flexibilité: Colors.emerald,
 }
 
+// Formate '2024-03-15' en "vendredi 15 mars 2024"
 function formatDate(d: string) {
   const [y, mo, day] = d.slice(0, 10).split('-').map(Number)
   return new Date(y, mo - 1, day).toLocaleDateString('fr-FR', {
@@ -27,32 +53,41 @@ function formatDate(d: string) {
 }
 
 export default function WorkoutDetailScreen() {
-  const route = useRoute<RouteParams>()
+  // useRoute() récupère les paramètres de navigation passés par l'écran précédent
+  const route      = useRoute<RouteParams>()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-  const { workoutId } = route.params
+  const { workoutId } = route.params // Extrait workoutId des params
 
-  const [workout, setWorkout] = useState<Workout | null>(null)
-  const [loading, setLoading] = useState(true)
+  // ── États ─────────────────────────────────────────────────
+
+  const [workout, setWorkout]       = useState<Workout | null>(null)
+  const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Tous les exercices disponibles (pour le sélecteur)
+  // Liste complète des exercices disponibles (pour le sélecteur dans la modal)
   const [allExercises, setAllExercises] = useState<Exercise[]>([])
 
-  // Modal ajout/édition exercice
-  const [exModalOpen, setExModalOpen] = useState(false)
-  const [editExTarget, setEditExTarget] = useState<WorkoutExercise | null>(null)
-  const [selectedExId, setSelectedExId] = useState<number | null>(null)
-  const [exForm, setExForm] = useState({ sets: '', reps: '', weight_used: '', duration: '' })
-  const [submittingEx, setSubmittingEx] = useState(false)
+  // ── États de la modal ajout/édition d'exercice ──
+  const [exModalOpen, setExModalOpen]     = useState(false)
+  const [editExTarget, setEditExTarget]   = useState<WorkoutExercise | null>(null) // null = ajout
+  const [selectedExId, setSelectedExId]   = useState<number | null>(null) // ID de l'exercice choisi
+  // Valeurs du formulaire de performance (tout en string car TextInput)
+  const [exForm, setExForm]               = useState({ sets: '', reps: '', weight_used: '', duration: '' })
+  const [submittingEx, setSubmittingEx]   = useState(false)
 
-  // Sélecteur exercice (scrollable list dans le modal)
-  const [exPickerOpen, setExPickerOpen] = useState(false)
+  // État du second modal (sélecteur d'exercice imbriqué dans le premier modal)
+  const [exPickerOpen, setExPickerOpen]   = useState(false)
 
+  // ── Chargement des données ─────────────────────────────────
+
+  // Charge la séance et la liste complète des exercices en parallèle pour
+  // réduire le temps d'attente — les deux requêtes sont indépendantes.
+  // Promise.all([p1, p2]) attend que les deux promesses soient résolues.
   const loadWorkout = async () => {
     try {
       const [wRes, exRes] = await Promise.all([
-        api.get(`/workouts/${workoutId}`),
-        api.get('/exercises'),
+        api.get(`/workouts/${workoutId}`), // Détail de la séance + ses exercices
+        api.get('/exercises'),             // Tous les exercices dispo (pour le sélecteur)
       ])
       setWorkout(wRes.data.workout)
       setAllExercises(exRes.data.exercises)
@@ -64,29 +99,38 @@ export default function WorkoutDetailScreen() {
     }
   }
 
+  // useEffect avec [workoutId] : se lance au montage ET si workoutId change
   useEffect(() => {
     loadWorkout()
   }, [workoutId])
 
+  // ── Gestion des modals ────────────────────────────────────
+
+  // Ouvre la modal pour AJOUTER un exercice
   const openAddEx = () => {
-    setEditExTarget(null)
+    setEditExTarget(null) // Mode ajout
     const firstEx = allExercises[0]
-    setSelectedExId(firstEx?.id ?? null)
+    setSelectedExId(firstEx?.id ?? null) // Pré-sélectionne le premier exercice
     setExForm({ sets: '', reps: '', weight_used: '', duration: '' })
     setExModalOpen(true)
   }
 
+  // Ouvre la modal pour MODIFIER un exercice existant (pré-remplit le formulaire)
   const openEditEx = (we: WorkoutExercise) => {
     setEditExTarget(we)
     setSelectedExId(we.exercise_id)
     setExForm({
-      sets: we.sets != null ? String(we.sets) : '',
-      reps: we.reps != null ? String(we.reps) : '',
+      // != null (au lieu de !== undefined) : capture aussi null
+      // String() convertit le nombre en texte pour TextInput
+      sets:        we.sets        != null ? String(we.sets)        : '',
+      reps:        we.reps        != null ? String(we.reps)        : '',
       weight_used: we.weight_used != null ? String(we.weight_used) : '',
-      duration: we.duration != null ? String(we.duration) : '',
+      duration:    we.duration    != null ? String(we.duration)    : '',
     })
     setExModalOpen(true)
   }
+
+  // ── Suppression d'un exercice de la séance ─────────────────
 
   const confirmDeleteEx = (we: WorkoutExercise) => {
     Alert.alert(
@@ -102,6 +146,8 @@ export default function WorkoutDetailScreen() {
   const handleDeleteEx = async (weId: number) => {
     try {
       await api.delete(`/workouts/${workoutId}/exercises/${weId}`)
+      // Mise à jour locale : filtre le tableau exercises sans recharger depuis l'API
+      // prev => représente l'état courant de workout
       setWorkout((prev) =>
         prev ? { ...prev, exercises: prev.exercises?.filter((e) => e.id !== weId) } : prev
       )
@@ -111,6 +157,8 @@ export default function WorkoutDetailScreen() {
     }
   }
 
+  // ── Ajout / Modification d'un exercice ────────────────────
+
   const handleSubmitEx = async () => {
     if (!selectedExId) {
       Toast.show({ type: 'error', text1: 'Sélectionne un exercice' })
@@ -118,23 +166,26 @@ export default function WorkoutDetailScreen() {
     }
     setSubmittingEx(true)
     try {
+      // Convertit les strings en nombres, envoie undefined si le champ est vide
       const payload = {
         exercise_id: selectedExId,
-        sets: exForm.sets ? Number(exForm.sets) : undefined,
-        reps: exForm.reps ? Number(exForm.reps) : undefined,
+        sets:        exForm.sets        ? Number(exForm.sets)        : undefined,
+        reps:        exForm.reps        ? Number(exForm.reps)        : undefined,
         weight_used: exForm.weight_used ? Number(exForm.weight_used) : undefined,
-        duration: exForm.duration ? Number(exForm.duration) : undefined,
+        duration:    exForm.duration    ? Number(exForm.duration)    : undefined,
       }
 
       if (editExTarget) {
+        // PATCH : mise à jour partielle (seulement les stats de performance)
         await api.patch(`/workouts/${workoutId}/exercises/${editExTarget.id}`, payload)
         Toast.show({ type: 'success', text1: 'Exercice modifié' })
       } else {
+        // POST : ajoute un nouvel exercice à la séance
         await api.post(`/workouts/${workoutId}/exercises`, payload)
         Toast.show({ type: 'success', text1: 'Exercice ajouté' })
       }
       setExModalOpen(false)
-      loadWorkout()
+      loadWorkout() // Recharge la séance pour afficher les données fraîches
     } catch (err: unknown) {
       const msg =
         err instanceof Error && 'response' in err
@@ -146,8 +197,15 @@ export default function WorkoutDetailScreen() {
     }
   }
 
+  // ── Logique du formulaire adaptatif ────────────────────────
+
+  // Trouve l'exercice actuellement sélectionné dans la liste complète
   const selectedExercise = allExercises.find((e) => e.id === selectedExId)
+  // Le formulaire de stats change selon la catégorie : Cardio → durée (secondes),
+  // Musculation/Flexibilité → séries + reps + poids.
   const isCardio = selectedExercise?.category === 'Cardio'
+
+  // ── Gestion des états de chargement et d'erreur ──────────
 
   if (loading) {
     return (
@@ -157,6 +215,7 @@ export default function WorkoutDetailScreen() {
     )
   }
 
+  // Si la séance n'a pas été trouvée (ID invalide ou supprimée)
   if (!workout) {
     return (
       <View style={styles.centered}>
@@ -167,6 +226,8 @@ export default function WorkoutDetailScreen() {
       </View>
     )
   }
+
+  // ── Rendu principal ────────────────────────────────────────
 
   return (
     <View style={styles.root}>
@@ -180,7 +241,7 @@ export default function WorkoutDetailScreen() {
           />
         }
       >
-        {/* En-tête de la séance */}
+        {/* ── En-tête de la séance : date, durée, notes ── */}
         <View style={styles.header}>
           <View style={styles.headerMeta}>
             <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
@@ -197,8 +258,9 @@ export default function WorkoutDetailScreen() {
           ) : null}
         </View>
 
-        {/* Section exercices */}
+        {/* ── Section exercices ── */}
         <View style={styles.section}>
+          {/* En-tête section : titre + bouton "Ajouter" */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
               Exercices {workout.exercises?.length ? `(${workout.exercises.length})` : ''}
@@ -211,11 +273,13 @@ export default function WorkoutDetailScreen() {
             )}
           </View>
 
+          {/* Liste des exercices OU état vide */}
           {workout.exercises && workout.exercises.length > 0 ? (
             workout.exercises.map((we) => {
               const catColor = CAT_COLORS[we.category ?? ''] ?? Colors.textSecondary
               return (
                 <View key={we.id} style={styles.exCard}>
+                  {/* Nom + boutons modifier/supprimer */}
                   <View style={styles.exHeader}>
                     <Text style={styles.exName}>{we.exercise_name}</Text>
                     <View style={styles.exActions}>
@@ -228,20 +292,23 @@ export default function WorkoutDetailScreen() {
                     </View>
                   </View>
 
+                  {/* Catégorie + groupe musculaire */}
                   {we.category && (
                     <Text style={[styles.exCat, { color: catColor }]}>
                       {we.category}{we.muscle_group ? ` · ${we.muscle_group}` : ''}
                     </Text>
                   )}
 
+                  {/* Chips de stats (séries, reps, poids, durée)
+                      Chaque chip n'est affiché que si la valeur n'est pas null */}
                   <View style={styles.exStats}>
-                    {we.sets != null && (
+                    {we.sets     != null && (
                       <View style={styles.statChip}>
                         <Text style={styles.statChipValue}>{we.sets}</Text>
                         <Text style={styles.statChipLabel}>séries</Text>
                       </View>
                     )}
-                    {we.reps != null && (
+                    {we.reps     != null && (
                       <View style={styles.statChip}>
                         <Text style={styles.statChipValue}>{we.reps}</Text>
                         <Text style={styles.statChipLabel}>reps</Text>
@@ -264,6 +331,7 @@ export default function WorkoutDetailScreen() {
               )
             })
           ) : (
+            /* Zone cliquable quand aucun exercice n'est encore ajouté */
             <TouchableOpacity style={styles.emptyExCard} onPress={openAddEx} activeOpacity={0.8}>
               <Ionicons name="add-circle-outline" size={24} color={Colors.textMuted} />
               <Text style={styles.emptyExText}>Ajouter un exercice à cette séance</Text>
@@ -272,7 +340,7 @@ export default function WorkoutDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal ajout/édition exercice */}
+      {/* ── Modal 1 : formulaire ajout/édition d'un exercice ── */}
       <Modal
         visible={exModalOpen}
         animationType="slide"
@@ -280,6 +348,7 @@ export default function WorkoutDetailScreen() {
         onRequestClose={() => setExModalOpen(false)}
       >
         <View style={styles.modal}>
+          {/* En-tête de la modal */}
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
               {editExTarget ? 'Modifier l\'exercice' : 'Ajouter un exercice'}
@@ -290,11 +359,12 @@ export default function WorkoutDetailScreen() {
           </View>
 
           <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
-            {/* Sélecteur exercice */}
+
+            {/* Bouton pour ouvrir le sélecteur d'exercice (Modal 2) */}
             <Text style={styles.label}>Exercice *</Text>
             <TouchableOpacity
               style={styles.exPicker}
-              onPress={() => setExPickerOpen(true)}
+              onPress={() => setExPickerOpen(true)} // Ouvre le second modal
               activeOpacity={0.8}
             >
               <Text style={styles.exPickerText}>
@@ -303,6 +373,7 @@ export default function WorkoutDetailScreen() {
               <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
 
+            {/* Affiche la catégorie + groupe de l'exercice sélectionné */}
             {selectedExercise && (
               <Text style={[styles.exCatLabel, { color: CAT_COLORS[selectedExercise.category] ?? Colors.textSecondary }]}>
                 {selectedExercise.category}
@@ -310,8 +381,9 @@ export default function WorkoutDetailScreen() {
               </Text>
             )}
 
-            {/* Champs selon catégorie */}
+            {/* Formulaire adaptatif selon la catégorie de l'exercice sélectionné */}
             {isCardio ? (
+              /* Cardio → un seul champ : durée en secondes */
               <>
                 <Text style={[styles.label, { marginTop: 16 }]}>Durée (secondes)</Text>
                 <TextInput
@@ -324,6 +396,7 @@ export default function WorkoutDetailScreen() {
                 />
               </>
             ) : (
+              /* Musculation / Flexibilité → 3 champs côte à côte */
               <View style={styles.statsRow}>
                 <View style={styles.statField}>
                   <Text style={styles.label}>Séries</Text>
@@ -361,6 +434,7 @@ export default function WorkoutDetailScreen() {
               </View>
             )}
 
+            {/* Boutons Annuler / Ajouter|Enregistrer */}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
@@ -385,7 +459,9 @@ export default function WorkoutDetailScreen() {
           </ScrollView>
         </View>
 
-        {/* Sélecteur d'exercice en cascade */}
+        {/* ── Modal 2 : sélecteur d'exercice (imbriqué dans Modal 1) ──
+            React Native autorise ce pattern de Modal dans Modal.
+            Le sélecteur se superpose au formulaire sans quitter l'écran. */}
         <Modal
           visible={exPickerOpen}
           animationType="slide"
@@ -399,6 +475,8 @@ export default function WorkoutDetailScreen() {
                 <Ionicons name="close" size={22} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
+
+            {/* Liste scrollable de tous les exercices */}
             <ScrollView>
               {allExercises.map((ex) => (
                 <TouchableOpacity
@@ -406,9 +484,9 @@ export default function WorkoutDetailScreen() {
                   style={[styles.pickerItem, selectedExId === ex.id && styles.pickerItemActive]}
                   onPress={() => {
                     setSelectedExId(ex.id)
-                    // Reset form fields when switching exercise
+                    // Remet le formulaire à zéro car les champs changent selon la catégorie
                     setExForm({ sets: '', reps: '', weight_used: '', duration: '' })
-                    setExPickerOpen(false)
+                    setExPickerOpen(false) // Ferme ce modal, retourne au formulaire
                   }}
                   activeOpacity={0.7}
                 >
@@ -430,6 +508,7 @@ export default function WorkoutDetailScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.dark },
+  // justifyContent + alignItems: 'center' → centrage parfait (spinner / message d'erreur)
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.dark },
   errorText: { color: Colors.textMuted, fontSize: 14 },
   content: { padding: 16, paddingBottom: 40 },
@@ -470,6 +549,7 @@ const styles = StyleSheet.create({
   statChipValue: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   statChipLabel: { fontSize: 10, color: Colors.textMuted },
 
+  // borderStyle: 'dashed' → contour pointillé pour l'état vide (invite à l'action)
   emptyExCard: {
     borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed',
     borderRadius: 12, padding: 24,
@@ -499,6 +579,7 @@ const styles = StyleSheet.create({
   },
   exPickerText: { fontSize: 14, color: Colors.textPrimary, flex: 1 },
   exCatLabel: { fontSize: 11, fontWeight: '500', marginTop: 6 },
+  // 3 champs côte à côte grâce à flexDirection: 'row' + flex: 1 sur chaque champ
   statsRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
   statField: { flex: 1 },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 24, marginBottom: 40 },
@@ -514,12 +595,13 @@ const styles = StyleSheet.create({
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnText: { color: Colors.white, fontWeight: '600' },
 
+  // Items de la liste du sélecteur d'exercice
   pickerItem: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  pickerItemActive: { backgroundColor: Colors.indigoBg },
+  pickerItemActive: { backgroundColor: Colors.indigoBg }, // Fond coloré pour l'item sélectionné
   pickerItemText: { fontSize: 14, color: Colors.textPrimary, flex: 1 },
   pickerItemTextActive: { color: Colors.primaryLight, fontWeight: '600' },
   pickerItemCat: { fontSize: 11, fontWeight: '500' },

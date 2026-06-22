@@ -1,7 +1,23 @@
+// ============================================================
+// RegisterScreen.tsx — Écran d'inscription
+//
+// Formulaire complet : nom d'utilisateur, email, mot de passe,
+// objectif fitness (boutons radio custom) et poids optionnel.
+// Après inscription réussie, le token est sauvegardé et l'app
+// bascule vers les onglets exactement comme après une connexion.
+// ============================================================
+
 import React, { useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
@@ -14,22 +30,28 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Register'>
 }
 
+// Correspondance entre les valeurs BDD et les labels affichés — doit rester
+// synchronisé avec le ENUM goal de la table User.
+// "as const" rend les types exacts ('lose' au lieu de string)
 const GOALS = [
-  { value: 'lose' as const, label: 'Perte de poids' },
+  { value: 'lose'     as const, label: 'Perte de poids' },
   { value: 'maintain' as const, label: 'Maintien' },
-  { value: 'gain' as const, label: 'Prise de masse' },
+  { value: 'gain'     as const, label: 'Prise de masse' },
 ]
 
 export default function RegisterScreen({ navigation }: Props) {
   const { register } = useAuth()
+
+  // Un state par champ — pattern standard pour les formulaires contrôlés en React
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [goal, setGoal] = useState<'lose' | 'maintain' | 'gain'>('maintain')
-  const [weight, setWeight] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [goal, setGoal]         = useState<'lose' | 'maintain' | 'gain'>('maintain') // Valeur par défaut
+  const [weight, setWeight]     = useState('')  // Stocké en string car TextInput travaille en texte
+  const [loading, setLoading]   = useState(false)
 
   const handleSubmit = async () => {
+    // Validation des champs obligatoires avant l'envoi
     if (!username || !email || !password) {
       Toast.show({ type: 'error', text1: 'Champs requis', text2: 'Nom, email et mot de passe sont obligatoires' })
       return
@@ -41,8 +63,11 @@ export default function RegisterScreen({ navigation }: Props) {
         email,
         password,
         goal,
-        weight: weight ? parseFloat(weight) : undefined,
+        // parseFloat convertit la string '75.5' en nombre 75.5
+        // Si le champ est vide, on envoie undefined (le backend l'accepte comme optionnel)
+        weight: weight ? parseFloat(weight) : undefined, // champ optionnel — omis si vide
       })
+      // Pas besoin de navigate() — AuthContext met user à jour, RootNavigator redirige automatiquement
     } catch (err: unknown) {
       const msg =
         err instanceof Error && 'response' in err
@@ -55,6 +80,7 @@ export default function RegisterScreen({ navigation }: Props) {
   }
 
   return (
+    // KeyboardAvoidingView : remonte l'écran quand le clavier virtuel apparaît
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -63,7 +89,7 @@ export default function RegisterScreen({ navigation }: Props) {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Logo */}
+        {/* ── Logo ── */}
         <View style={styles.logoWrapper}>
           <View style={styles.logoIcon}>
             <Ionicons name="barbell" size={28} color={Colors.white} />
@@ -73,7 +99,8 @@ export default function RegisterScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.card}>
-          {/* Nom d'utilisateur */}
+
+          {/* ── Nom d'utilisateur ── */}
           <View style={styles.field}>
             <Text style={styles.label}>Nom d'utilisateur *</Text>
             <TextInput
@@ -82,11 +109,11 @@ export default function RegisterScreen({ navigation }: Props) {
               placeholderTextColor={Colors.textMuted}
               value={username}
               onChangeText={setUsername}
-              autoCapitalize="none"
+              autoCapitalize="none" // Empêche la mise en majuscule de la première lettre
             />
           </View>
 
-          {/* Email */}
+          {/* ── Email ── */}
           <View style={styles.field}>
             <Text style={styles.label}>Email *</Text>
             <TextInput
@@ -100,7 +127,7 @@ export default function RegisterScreen({ navigation }: Props) {
             />
           </View>
 
-          {/* Mot de passe */}
+          {/* ── Mot de passe ── */}
           <View style={styles.field}>
             <Text style={styles.label}>Mot de passe *</Text>
             <TextInput
@@ -109,19 +136,22 @@ export default function RegisterScreen({ navigation }: Props) {
               placeholderTextColor={Colors.textMuted}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry // Masque la saisie (points ou astérisques)
             />
           </View>
 
-          {/* Objectif */}
+          {/* ── Objectif (boutons radio personnalisés) ──
+              React Native n'a pas de RadioButton natif — on reproduit le comportement
+              avec des TouchableOpacity dont le style change selon la valeur sélectionnée. */}
           <View style={styles.field}>
             <Text style={styles.label}>Objectif *</Text>
             <View style={styles.goalRow}>
               {GOALS.map((g) => (
                 <TouchableOpacity
                   key={g.value}
+                  // Style conditionnel : si ce bouton est l'objectif sélectionné → style actif
                   style={[styles.goalBtn, goal === g.value && styles.goalBtnActive]}
-                  onPress={() => setGoal(g.value)}
+                  onPress={() => setGoal(g.value)} // Sélectionne cet objectif
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.goalBtnText, goal === g.value && styles.goalBtnTextActive]}>
@@ -132,7 +162,7 @@ export default function RegisterScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Poids */}
+          {/* ── Poids (optionnel) ── */}
           <View style={styles.field}>
             <Text style={styles.label}>Poids (kg)</Text>
             <TextInput
@@ -141,10 +171,11 @@ export default function RegisterScreen({ navigation }: Props) {
               placeholderTextColor={Colors.textMuted}
               value={weight}
               onChangeText={setWeight}
-              keyboardType="decimal-pad"
+              keyboardType="decimal-pad" // Clavier numérique avec virgule décimale
             />
           </View>
 
+          {/* ── Bouton de soumission ── */}
           <TouchableOpacity
             style={[styles.btn, loading && styles.btnDisabled]}
             onPress={handleSubmit}
@@ -158,6 +189,7 @@ export default function RegisterScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
 
+          {/* ── Lien retour connexion ── */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Déjà un compte ? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
@@ -193,9 +225,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     fontSize: 14, color: Colors.textPrimary,
   },
+  // flexDirection: 'row' + gap → les 3 boutons objectif côte à côte avec espacement
   goalRow: { flexDirection: 'row', gap: 8 },
   goalBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 10,
+    flex: 1,             // flex: 1 → chaque bouton prend 1/3 de la largeur disponible
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1, borderColor: Colors.border,
     backgroundColor: 'rgba(15,23,42,0.4)',
     alignItems: 'center',

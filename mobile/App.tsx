@@ -25,6 +25,8 @@ import ProfileScreen from './src/screens/ProfileScreen'
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const Tab = createBottomTabNavigator<TabParamList>()
 
+// Lookup centralisé pour éviter un switch dans screenOptions — chaque onglet a
+// une icône "filled" (focus) et "outline" (inactif) correspondante dans Ionicons.
 const TAB_ICONS: Record<
   string,
   { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }
@@ -35,6 +37,7 @@ const TAB_ICONS: Record<
   Profile:   { active: 'person', inactive: 'person-outline' },
 }
 
+// Navigation à onglets du bas — accessible uniquement quand l'utilisateur est connecté.
 function AppTabs() {
   return (
     <Tab.Navigator
@@ -68,6 +71,9 @@ function AppTabs() {
   )
 }
 
+// Portail de navigation : affiche les écrans auth ou l'app selon l'état du token.
+// Le spinner pendant le chargement initial évite un flash de l'écran de login
+// quand le token AsyncStorage est encore en cours de lecture.
 function RootNavigator() {
   const { user, loading } = useAuth()
 
@@ -79,6 +85,7 @@ function RootNavigator() {
         {user ? (
           <>
             <Stack.Screen name="AppTabs" component={AppTabs} />
+            {/* WorkoutDetail sort des onglets → header natif avec bouton retour */}
             <Stack.Screen
               name="WorkoutDetail"
               component={WorkoutDetailScreen}

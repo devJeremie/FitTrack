@@ -1,4 +1,5 @@
-// Types partagés entre les écrans — miroir du frontend web (frontend/src/types/index.ts)
+// Types partagés entre les écrans — miroir du frontend web (frontend/src/types/index.ts).
+// Toute modification du schéma BDD doit être répercutée ici ET dans le frontend web.
 
 export interface User {
   id: number
@@ -69,7 +70,9 @@ export interface ProgressionStats {
   }
 }
 
-// Types navigation React Navigation
+// Types React Navigation — utilisés pour typer useNavigation() et RouteProp.
+// RootStackParamList : stack principal (auth + écrans hors onglets).
+// TabParamList : onglets du bas, tous sans paramètre de route.
 export type RootStackParamList = {
   Login: undefined
   Register: undefined

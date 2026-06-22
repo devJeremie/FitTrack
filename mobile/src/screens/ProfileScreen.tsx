@@ -1,7 +1,25 @@
+// ============================================================
+// ProfileScreen.tsx — Profil utilisateur
+//
+// Affiche :
+//   - Avatar avec initiales + nom + email + objectif fitness
+//   - Poids si renseigné
+//   - 4 tuiles de statistiques globales
+//   - Activité récente (4 derniers mois)
+//   - Date d'inscription + bouton de déconnexion
+//
+// Données : GET /api/stats/progression (mêmes stats que le Dashboard)
+// ============================================================
+
 import React, { useState, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, RefreshControl,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  RefreshControl,
 } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
@@ -11,22 +29,26 @@ import { ProgressionStats } from '../types'
 import api from '../services/api'
 import LoadingSpinner from '../components/LoadingSpinner'
 
+// Libellés lisibles pour chaque valeur d'objectif en BDD
 const GOAL_LABELS: Record<string, string> = {
-  lose: 'Perte de poids',
+  lose:     'Perte de poids',
   maintain: 'Maintien du poids',
-  gain: 'Prise de masse',
+  gain:     'Prise de masse',
 }
 
+// Icône Ionicons associée à chaque objectif
 const GOAL_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  lose: 'trending-down-outline',
+  lose:     'trending-down-outline',
   maintain: 'remove-outline',
-  gain: 'trending-up-outline',
+  gain:     'trending-up-outline',
 }
 
 export default function ProfileScreen() {
+  // Récupère user (infos de l'utilisateur) et logout (déconnexion) depuis le Context
   const { user, logout } = useAuth()
-  const [stats, setStats] = useState<ProgressionStats | null>(null)
-  const [loading, setLoading] = useState(true)
+
+  const [stats, setStats]           = useState<ProgressionStats | null>(null)
+  const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
   const fetchStats = async () => {
@@ -34,36 +56,42 @@ export default function ProfileScreen() {
       const res = await api.get('/stats/progression')
       setStats(res.data)
     } catch {
-      // silencieux
+      // silencieux — l'UI affiche des 0 si les stats ne chargent pas
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }
 
+  // Rechargement automatique à chaque fois que l'onglet Profil devient actif
   useFocusEffect(
     useCallback(() => {
       fetchStats()
     }, [])
   )
 
+  // Boîte de dialogue de confirmation avant de déconnecter
   const confirmLogout = () => {
     Alert.alert(
       'Déconnexion',
       'Es-tu sûr de vouloir te déconnecter ?',
       [
         { text: 'Annuler', style: 'cancel' },
+        // logout() vient du Context : supprime le token + met user à null → app redirige vers Login
         { text: 'Se déconnecter', style: 'destructive', onPress: logout },
       ]
     )
   }
 
+  // Affiche le spinner tant que les stats ne sont pas chargées
   if (loading) return <LoadingSpinner />
 
+  // Deux premières lettres du nom en majuscule pour l'avatar (ex: "JD" pour "johndoe").
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
     : '?'
 
+  // Raccourci vers les statistiques globales (évite de répéter stats?.stats.summary)
   const summary = stats?.stats.summary
 
   return (
@@ -71,6 +99,7 @@ export default function ProfileScreen() {
       style={styles.root}
       contentContainerStyle={styles.content}
       refreshControl={
+        // "Pull to refresh" pour recharger les stats manuellement
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => { setRefreshing(true); fetchStats() }}
@@ -78,15 +107,16 @@ export default function ProfileScreen() {
         />
       }
     >
-      {/* Avatar + nom */}
+      {/* ── Carte de profil : avatar + nom + email + objectif ── */}
       <View style={styles.profileCard}>
+        {/* Avatar circulaire avec les initiales */}
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <Text style={styles.username}>{user?.username}</Text>
         <Text style={styles.email}>{user?.email}</Text>
 
-        {/* Objectif */}
+        {/* Badge d'objectif avec icône */}
         <View style={styles.goalBadge}>
           <Ionicons
             name={GOAL_ICONS[user?.goal ?? 'maintain']}
@@ -97,7 +127,8 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Infos physiques */}
+      {/* ── Poids (section conditionnelle) ──
+          N'affiche cette carte que si l'utilisateur a renseigné son poids */}
       {user?.weight && (
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
@@ -108,11 +139,13 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {/* Statistiques globales */}
+      {/* ── Titre de section ── */}
       <View style={styles.sectionTitle}>
         <Text style={styles.sectionTitleText}>Statistiques globales</Text>
       </View>
 
+      {/* ── 4 tuiles de statistiques ──
+          StatTile est un composant local défini plus bas dans ce fichier */}
       <View style={styles.statsGrid}>
         <StatTile
           icon="trophy-outline"
@@ -144,7 +177,10 @@ export default function ProfileScreen() {
         />
       </View>
 
-      {/* Activité mensuelle récente */}
+      {/* ── Activité récente (4 derniers mois) ──
+          L'API renvoie les mois du plus ancien au plus récent.
+          On inverse (.reverse()) pour avoir le plus récent en premier,
+          puis on prend les 4 premiers (.slice(0, 4)). */}
       {stats?.stats.monthly && stats.stats.monthly.length > 0 && (
         <>
           <View style={styles.sectionTitle}>
@@ -152,14 +188,19 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.infoCard}>
             {[...stats.stats.monthly].reverse().slice(0, 4).map((m) => {
+              // Reconstruction d'un objet Date à partir de '2024-03' pour le formater
               const [year, month] = m.month.split('-')
-              const date = new Date(Number(year), Number(month) - 1)
+              const date  = new Date(Number(year), Number(month) - 1)
               const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
               return (
                 <View key={m.month} style={styles.monthRow}>
+                  {/* Nom du mois avec majuscule automatique (textTransform dans le style) */}
                   <Text style={styles.monthLabel}>{label}</Text>
                   <View style={styles.monthRight}>
-                    <Text style={styles.monthWorkouts}>{m.workout_count} séance{m.workout_count !== 1 ? 's' : ''}</Text>
+                    {/* Pluriel automatique : "1 séance" vs "3 séances" */}
+                    <Text style={styles.monthWorkouts}>
+                      {m.workout_count} séance{m.workout_count !== 1 ? 's' : ''}
+                    </Text>
                     <Text style={styles.monthMinutes}>{m.total_minutes} min</Text>
                   </View>
                 </View>
@@ -169,7 +210,7 @@ export default function ProfileScreen() {
         </>
       )}
 
-      {/* Infos compte */}
+      {/* ── Infos du compte ── */}
       <View style={styles.sectionTitle}>
         <Text style={styles.sectionTitleText}>Compte</Text>
       </View>
@@ -180,13 +221,13 @@ export default function ProfileScreen() {
           <Text style={styles.infoValue}>
             {user?.created_at
               ? new Date(user.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-              : '—'
+              : '—' // Tiret cadratin si la date n'est pas disponible
             }
           </Text>
         </View>
       </View>
 
-      {/* Bouton déconnexion */}
+      {/* ── Bouton de déconnexion ── */}
       <TouchableOpacity style={styles.logoutBtn} onPress={confirmLogout} activeOpacity={0.8}>
         <Ionicons name="log-out-outline" size={18} color={Colors.red} />
         <Text style={styles.logoutText}>Se déconnecter</Text>
@@ -195,6 +236,9 @@ export default function ProfileScreen() {
   )
 }
 
+// ── Composant StatTile ──────────────────────────────────────
+// Composant local réutilisable pour afficher une tuile de statistique.
+// Accepte des props pour personnaliser l'icône, la couleur et les valeurs.
 function StatTile({
   icon, iconColor, iconBg, label, value,
 }: {
@@ -206,6 +250,7 @@ function StatTile({
 }) {
   return (
     <View style={styles.statTile}>
+      {/* Icône dans un cercle coloré */}
       <View style={[styles.statTileIcon, { backgroundColor: iconBg }]}>
         <Ionicons name={icon} size={18} color={iconColor} />
       </View>
@@ -219,14 +264,15 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.dark },
   content: { padding: 16, paddingBottom: 40 },
 
+  // Carte de profil : alignItems: 'center' centre les enfants horizontalement
   profileCard: {
     backgroundColor: Colors.surface, borderRadius: 20,
     borderWidth: 1, borderColor: Colors.border,
     padding: 24, alignItems: 'center', marginBottom: 16,
   },
+  // Cercle de 72px : borderRadius = moitié de la width/height
   avatar: {
     width: 72, height: 72, borderRadius: 36,
-    background: `linear-gradient(135deg, ${Colors.primary}, ${Colors.violet})`,
     backgroundColor: Colors.primary,
     justifyContent: 'center', alignItems: 'center', marginBottom: 12,
   },
@@ -248,17 +294,22 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
   },
-  infoLabel: { fontSize: 14, color: Colors.textSecondary, flex: 1 },
+  infoLabel: { fontSize: 14, color: Colors.textSecondary, flex: 1 }, // flex: 1 → pousse la valeur à droite
   infoValue: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
 
+  // Titre de section en petites majuscules (textTransform + letterSpacing)
   sectionTitle: { marginBottom: 8, marginTop: 4 },
-  sectionTitleText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  sectionTitleText: {
+    fontSize: 12, fontWeight: '600', color: Colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+  },
 
+  // Grille de tuiles 2 colonnes (flexWrap + minWidth)
   statsGrid: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16,
   },
   statTile: {
-    flex: 1, minWidth: '45%',
+    flex: 1, minWidth: '45%', // 2 tuiles par ligne
     backgroundColor: Colors.surface, borderRadius: 16,
     borderWidth: 1, borderColor: Colors.border, padding: 14,
   },
@@ -274,10 +325,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.border,
   },
   monthLabel: { fontSize: 13, color: Colors.textSecondary, textTransform: 'capitalize' },
-  monthRight: { alignItems: 'flex-end' },
+  monthRight: { alignItems: 'flex-end' }, // Aligne le texte à droite
   monthWorkouts: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
   monthMinutes: { fontSize: 11, color: Colors.textMuted },
 
+  // Bouton de déconnexion avec fond rouge semi-transparent
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, marginTop: 8, padding: 14,

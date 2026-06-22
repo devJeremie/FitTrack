@@ -14,6 +14,7 @@ FitTrack/
 ├── SESSION1_DONE.md            # Compte rendu Session 1
 ├── SESSION2_DONE.md            # Compte rendu Session 2
 ├── SESSION3_DONE.md            # Compte rendu Session 3
+├── SESSION4_DONE.md            # Compte rendu Session 4 (app mobile)
 │
 ├── backend/                    # API REST Node.js + Express
 │   ├── Dockerfile
@@ -76,8 +77,35 @@ FitTrack/
 ├── nginx/
 │   └── nginx.conf              # Proxy inverse : /api → backend:5000, / → frontend:3000
 │
-└── database/
-    └── init.sql                # Schéma + données de test (exécuté au premier démarrage MySQL)
+├── database/
+│   └── init.sql                # Schéma + données de test (exécuté au premier démarrage MySQL)
+│
+└── mobile/                     # App React Native + Expo
+    ├── App.tsx                 # Point d'entrée : Stack + BottomTabs + AuthProvider + Toast
+    ├── app.json                # Configuration Expo
+    ├── babel.config.js         # babel-preset-expo
+    ├── tsconfig.json           # extends expo/tsconfig.base + strict + baseUrl + paths @/*
+    ├── package.json            # Expo 52 + React Native 0.76 + React Navigation + Axios
+    └── src/
+        ├── config.ts           # API_URL — IP locale à configurer
+        ├── types/
+        │   └── index.ts        # User, Exercise, Workout, WorkoutExercise, ProgressionStats, RootStackParamList, TabParamList
+        ├── constants/
+        │   └── colors.ts       # Design tokens calqués sur le frontend web
+        ├── services/
+        │   └── api.ts          # Axios + intercepteurs JWT Bearer + suppression token 401
+        ├── context/
+        │   └── AuthContext.tsx # AuthProvider : login / register / logout + AsyncStorage
+        ├── components/
+        │   └── LoadingSpinner.tsx
+        └── screens/
+            ├── LoginScreen.tsx
+            ├── RegisterScreen.tsx
+            ├── DashboardScreen.tsx     # 4 stat cards + BarChart + répartition catégories + dernières séances
+            ├── ExercisesScreen.tsx     # FlatList + recherche debounce + filtres + Modal CRUD
+            ├── WorkoutsScreen.tsx      # FlatList + Modal création/édition + navigation WorkoutDetail
+            ├── WorkoutDetailScreen.tsx # Exercices séance + Modal ajout/édition + picker imbriqué
+            └── ProfileScreen.tsx       # Avatar initiales + stats + activité mensuelle + déconnexion
 ```
 
 ## Containers Docker
@@ -194,6 +222,8 @@ FRONTEND_URL=http://localhost:3000
 - **Encodage MySQL** : `database/init.sql` commence par `SET NAMES utf8mb4` pour éviter le double-encodage des accents (ex. `Flexibilité` → `FlexibilitÃ©`). `backend/config/database.js` spécifie aussi `charset: 'utf8mb4'`.
 - **Volume frontend** : `docker-compose.yml` monte `./frontend:/app` pour que Vite HMR détecte les modifications de code sans rebuild.
 - **Reset DB** : si les containers MySQL ont été créés avec d'anciens credentials, faire `docker-compose down -v && docker-compose up -d` pour réinitialiser le volume.
+- **Mobile — IP API** : `mobile/src/config.ts` contient `API_URL = 'http://192.168.1.X:5000/api'`. Remplacer `X` par l'IP WiFi réelle de la machine (commande `ipconfig` sur Windows). Ne pas utiliser `localhost` (Expo tourne sur le téléphone, pas le PC).
+- **Mobile — node_modules** : si `npm install` échoue avec `Invalid Version`, supprimer `node_modules` via `robocopy` (les chemins dépassent 260 chars sur Windows, `Remove-Item` PowerShell échoue) puis relancer `npm install`.
 
 ## Commandes utiles
 
@@ -216,6 +246,21 @@ docker-compose down -v
 
 # Vérifier l'état des containers
 docker-compose ps
+```
+
+### App mobile (depuis `mobile/`)
+```bash
+# Lancer le serveur Expo (scanner le QR code avec Expo Go)
+npx expo start
+
+# Cibler un OS spécifique
+npx expo start --android
+npx expo start --ios
+
+# Réinstaller les dépendances (si node_modules corrompu)
+# Sur Windows : supprimer node_modules via robocopy (chemins > 260 chars)
+robocopy _empty_tmp node_modules /MIR && rmdir /s /q node_modules
+npm install
 ```
 
 ## URLs de développement
@@ -265,3 +310,4 @@ docker exec -it fittrack-frontend npm run test:coverage
 - **Session 2** — COMPLÈTE : Frontend React + Vite + TypeScript + Tailwind (SPA fullstack fonctionnelle)
 - **Session 3** — COMPLÈTE : Audit routes, vérification intégration, nettoyage, documentation
 - **Session 3.5** — COMPLÈTE : Tests unitaires Jest (backend) + Vitest/RTL (frontend)
+- **Session 4** — COMPLÈTE : App mobile React Native + Expo (9 écrans, navigation, commentaires pédagogiques, corrections tsconfig + node_modules)
