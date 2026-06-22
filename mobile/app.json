@@ -20,12 +20,7 @@
       "package": "com.fittrack.mobile"
     },
     "plugins": [
-      [
-        "@react-native-async-storage/async-storage",
-        {
-          "exclude": []
-        }
-      ]
+      "expo-asset"
     ]
   }
 }
