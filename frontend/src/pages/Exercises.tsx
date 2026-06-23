@@ -268,7 +268,7 @@ export default function Exercises() {
               </button>
             </div>
           </form>
-        </Modal>
+        </Modal> 
       )}
 
       {/* Modal de confirmation de suppression */}
