@@ -32,7 +32,6 @@ api.interceptors.request.use((config) => {
   }
   return config // On retourne la config modifiée pour continuer la requête
 })
-
 // ============================================================
 // INTERCEPTEUR DE RÉPONSE (après réception)
 // ============================================================
