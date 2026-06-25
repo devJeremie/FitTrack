@@ -298,7 +298,7 @@ export default function Workouts() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className={labelCls}>
-                      Exercices
+                      Exercices  
                       {form.exercises.length > 0 && <span className="ml-2 text-indigo-400">({form.exercises.length})</span>}
                     </label>
                     {exercises.length > 0 && (
