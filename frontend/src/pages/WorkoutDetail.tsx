@@ -8,7 +8,6 @@
 //   - État par identifiant : Record<number, ...> pour gérer plusieurs
 //     états indépendants (édition/sauvegarde/suppression par exercice)
 // ============================================================
-
 import { useEffect, useState, ChangeEvent } from 'react'
 // useParams : lit les segments dynamiques de l'URL (/workouts/:id → params.id)
 // useNavigate : redirection programmatique
