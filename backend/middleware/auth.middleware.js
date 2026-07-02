@@ -46,6 +46,8 @@ const authMiddleware = (req, res, next) => {
     // next() passe la main au prochain middleware ou au contrôleur
     next();
   } catch (err) {
+    console.log('ERREUR JWT:', err.name, '-', err.message);
+    console.log('SECRET DANS LE MIDDLEWARE:' ,process.env.JWT_SECRET);
     // Distinction entre token expiré et token invalide pour un meilleur message
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired. Please log in again.' });

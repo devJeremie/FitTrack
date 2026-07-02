@@ -124,7 +124,7 @@ describe('Workout Routes', () => {
         .set(authHeader())
         .send({ date: '2024-01-15' }); // title absent
 
-      expect(res.status).toBe(400);f
+      expect(res.status).toBe(400);
       expect(res.body.error).toBe('Title and date are required.');
     });
 
