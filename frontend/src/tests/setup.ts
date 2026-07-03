@@ -11,5 +11,6 @@
 //   - toBeDisabled()      : vérifie que l'élément est désactivé
 //   - toHaveValue()       : vérifie la valeur d'un input
 //   etc.
+
 // Sans cet import, ces matchers ne seraient pas disponibles dans les tests.
 import '@testing-library/jest-dom'
