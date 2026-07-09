@@ -1,4 +1,6 @@
+import 'react-native-url-polyfill/auto'
 import React from 'react'
+import { registerRootComponent } from 'expo'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -112,7 +114,7 @@ function RootNavigator() {
   )
 }
 
-export default function App() {
+function App() {
   return (
     <AuthProvider>
       <StatusBar style="light" />
@@ -120,3 +122,8 @@ export default function App() {
     </AuthProvider>
   )
 }
+
+// package.json a "main": "App.tsx" (pas le bootstrap expo/AppEntry.js par
+// défaut) — sans cet appel, AppRegistry n'a jamais de composant "main"
+// enregistré et le lancement échoue avec "main has not been registered".
+registerRootComponent(App)
