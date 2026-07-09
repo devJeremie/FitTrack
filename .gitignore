@@ -21,3 +21,4 @@ mysql_data/
 # Build
 frontend/dist/
 backend/dist/
+database/init-clevercloud.sql
