@@ -11,8 +11,8 @@ const mysql = require('mysql2/promise');
 // Quand une requête arrive, elle prend une connexion disponible, l'utilise,
 // puis la relâche dans le pool (elle n'est pas fermée, juste réutilisée).
 const pool = mysql.createPool({
-  // Les valeurs viennent du .env (injectées par Docker en production)
-  host: process.env.DB_HOST || 'mysql',       // Nom du service Docker
+  // Les valeurs viennent du .env (injectées par Docker en dev, par Render en prod)
+  host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT) || 3306,
   database: process.env.DB_NAME || 'fittrack',
   user: process.env.DB_USER || 'fittrack_user',
@@ -31,6 +31,12 @@ const pool = mysql.createPool({
   queueLimit: 0,
   // Stocke les dates en UTC dans MySQL pour éviter les décalages horaires
   timezone: '+00:00',
+
+  // SSL requis pour les connexions MySQL externes (ex: Clever Cloud "Direct access")
+  // Mettre DB_SSL=true dans les variables d'env Render ; laisser absent en dev local
+  ...(process.env.DB_SSL === 'true' && {
+    ssl: { rejectUnauthorized: false },
+  }),
 });
 
 // ---- Test de connexion au démarrage ----
