@@ -17,10 +17,16 @@
       "adaptiveIcon": {
         "backgroundColor": "#0F172A"
       },
-      "package": "com.fittrack.mobile"
+      "package": "com.fittrack.mobile",
+      "versionCode": 1
     },
     "plugins": [
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7ff14738-abfd-4c92-b721-b2f847886ad6"
+      }
+    }
   }
 }

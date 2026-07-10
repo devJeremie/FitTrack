@@ -1,4 +1,5 @@
 # FitTrack — Documentation du projet
+# Url du projet en ligne : https://fit-track-hbs3.vercel.app/dashboard
 
 Application de suivi de fitness fullstack (Node.js + React + MySQL + Docker).
 
@@ -15,6 +16,9 @@ FitTrack/
 ├── SESSION2_DONE.md            # Compte rendu Session 2
 ├── SESSION3_DONE.md            # Compte rendu Session 3
 ├── SESSION4_DONE.md            # Compte rendu Session 4 (app mobile)
+├── SESSION5_DONE.md            # Compte rendu Session 5 (déploiement prod)
+├── DEPLOYMENT.md                # Guide de déploiement prod (Clever Cloud + Render + Vercel)
+├── render.yaml                  # Blueprint Render (backend Docker)
 │
 ├── backend/                    # API REST Node.js + Express
 │   ├── Dockerfile
@@ -311,3 +315,4 @@ docker exec -it fittrack-frontend npm run test:coverage
 - **Session 3** — COMPLÈTE : Audit routes, vérification intégration, nettoyage, documentation
 - **Session 3.5** — COMPLÈTE : Tests unitaires Jest (backend) + Vitest/RTL (frontend)
 - **Session 4** — COMPLÈTE : App mobile React Native + Expo (9 écrans, navigation, commentaires pédagogiques, corrections tsconfig + node_modules)
+- **Session 5** — COMPLÈTE : Déploiement production (Clever Cloud + Render + Vercel), correctifs SSL/CORS/VITE_API_URL
