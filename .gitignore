@@ -1,7 +1,7 @@
 # Environment
 .env
 !.env.example
-config.ts
+backend/config.ts
 # Node
 node_modules/
 backend/node_modules/
